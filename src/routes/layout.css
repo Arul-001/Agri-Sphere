@@ -1,0 +1,130 @@
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
+@import 'tailwindcss';
+@plugin '@tailwindcss/forms';
+@plugin '@tailwindcss/typography';
+
+@theme {
+	--color-primary-green: #16A34A;
+	--color-dark-green: #15803D;
+	--color-light-green: #DCFCE7;
+	--color-background-green: #f9f9f9;
+	--color-surface: #f9f9f9;
+	--color-surface-dim: #dadada;
+	--color-surface-bright: #f9f9f9;
+	--color-surface-container-lowest: #ffffff;
+	--color-surface-container-low: #f3f3f3;
+	--color-surface-container: #eeeeee;
+	--color-surface-container-high: #e8e8e8;
+	--color-surface-container-highest: #e2e2e2;
+	--color-outline: #6e7b6c;
+	--color-outline-variant: #bdcaba;
+	--color-secondary-green: #006d30;
+	--color-accent-yellow: #fbbf24;
+	--color-danger-red: #ba1a1a;
+	--font-sans: 'Inter', sans-serif;
+	--radius-2xl: 16px;
+}
+
+body {
+	margin: 0;
+	font-family: 'Inter', sans-serif;
+	background-color: var(--color-background-green);
+}
+
+button,
+a,
+input,
+select,
+textarea {
+	letter-spacing: 0;
+}
+
+/* Material symbols override */
+.material-symbols-outlined {
+	font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+	display: inline-block;
+	vertical-align: middle;
+}
+.material-symbols-outlined.filled {
+	font-variation-settings: 'FILL' 1;
+}
+
+/* Custom Glassmorphism Styles matching Stitch */
+.glass-card {
+	background: rgba(255, 255, 255, 0.7);
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+	border: 1px solid rgba(229, 231, 235, 0.5);
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glass-card:hover {
+	transform: translateY(-4px);
+	box-shadow: 0 10px 30px rgba(22, 163, 74, 0.1);
+	border-color: rgba(22, 163, 74, 0.2);
+}
+
+.glass-sidebar {
+	background: rgba(255, 255, 255, 0.7);
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+	border-right: 1px solid rgba(229, 231, 235, 0.5);
+}
+
+/* Reusable design component classes */
+.btn-primary {
+	background-color: var(--color-primary-green);
+	color: #ffffff;
+	font-weight: 700;
+	border-radius: 0.5rem;
+	transition: all 0.2s ease-in-out;
+}
+.btn-primary:hover {
+	background-color: var(--color-dark-green);
+}
+
+.btn-secondary {
+	background-color: transparent;
+	border: 1px solid var(--color-primary-green);
+	color: var(--color-primary-green);
+	font-weight: 700;
+	border-radius: 0.5rem;
+	transition: all 0.2s ease-in-out;
+}
+.btn-secondary:hover {
+	background-color: var(--color-light-green);
+}
+
+.input-field {
+	background-color: #F9FAFB;
+	border: 1px solid var(--color-outline-variant);
+	border-radius: 0.5rem;
+	padding: 0.75rem 1rem;
+	outline: none;
+	transition: all 0.2s ease-in-out;
+}
+.input-field:focus {
+	border-color: var(--color-primary-green);
+	box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+	background-color: #ffffff;
+}
+
+/* Animations helper */
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.animate-fade-in {
+	animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.transition-all-custom {
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
