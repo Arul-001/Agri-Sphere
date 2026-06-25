@@ -50,7 +50,7 @@
 					labels: ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'],
 					datasets: [
 						{
-							label: 'Operational Expenses ($)',
+							label: 'Operational Expenses (₹)',
 							data: [12000, 14200, 11500, 15000, 16800, 16600],
 							borderColor: '#006b2c', // primary-green
 							backgroundColor: 'rgba(22, 163, 74, 0.05)',
@@ -177,7 +177,7 @@
 					</div>
 
 					<label class="block">
-						<span class="block mb-1">Amount ($)</span>
+						<span class="block mb-1">Amount (₹)</span>
 						<input type="number" step="0.01" bind:value={newAmount} required placeholder="0.00" class="input-field w-full text-xs" />
 					</label>
 
@@ -228,7 +228,7 @@
 				</div>
 				<div>
 					<p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fertilizer</p>
-					<p class="text-lg font-black text-slate-800 mt-0.5">${fertilizerTotal.toLocaleString()}</p>
+					<p class="text-lg font-black text-slate-800 mt-0.5">₹{fertilizerTotal.toLocaleString()}</p>
 				</div>
 			</div>
 			<!-- Labor -->
@@ -238,7 +238,7 @@
 				</div>
 				<div>
 					<p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Labor</p>
-					<p class="text-lg font-black text-slate-800 mt-0.5">${laborTotal.toLocaleString()}</p>
+					<p class="text-lg font-black text-slate-800 mt-0.5">₹{laborTotal.toLocaleString()}</p>
 				</div>
 			</div>
 			<!-- Water -->
@@ -248,7 +248,7 @@
 				</div>
 				<div>
 					<p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Water</p>
-					<p class="text-lg font-black text-slate-800 mt-0.5">${waterTotal.toLocaleString()}</p>
+					<p class="text-lg font-black text-slate-800 mt-0.5">₹{waterTotal.toLocaleString()}</p>
 				</div>
 			</div>
 			<!-- Electricity -->
@@ -258,7 +258,7 @@
 				</div>
 				<div>
 					<p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Electricity</p>
-					<p class="text-lg font-black text-slate-800 mt-0.5">${electricityTotal.toLocaleString()}</p>
+					<p class="text-lg font-black text-slate-800 mt-0.5">₹{electricityTotal.toLocaleString()}</p>
 				</div>
 			</div>
 		</div>
@@ -288,7 +288,7 @@
 							<td class="p-4 pl-6 text-slate-400">{expense.date}</td>
 							<td class="p-4 font-bold text-slate-800">{expense.category}</td>
 							<td class="p-4 text-slate-500">{expense.description}</td>
-							<td class="p-4 font-extrabold text-slate-800">${expense.amount.toFixed(2)}</td>
+							<td class="p-4 font-extrabold text-slate-800">₹{expense.amount.toFixed(2)}</td>
 							<td class="p-4">
 								<span class={['px-2.5 py-0.5 rounded-full text-[10px] font-bold border', expense.statusColor]}>
 									{expense.status}

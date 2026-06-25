@@ -164,6 +164,30 @@ export async function deleteTask(taskId) {
 	await deleteDoc(doc(db, 'tasks', taskId));
 }
 
+export function subscribeListings(callback) {
+	return onSnapshot(collection(db, 'listings'), (snapshot) => {
+		callback(mapSnapshot(snapshot));
+	});
+}
+
+export async function createListing(listingData) {
+	await addDoc(collection(db, 'listings'), {
+		...listingData,
+		createdAt: serverTimestamp()
+	});
+}
+
+export async function updateListing(listingId, listingData) {
+	await updateDoc(doc(db, 'listings', listingId), {
+		...listingData,
+		updatedAt: serverTimestamp()
+	});
+}
+
+export async function deleteListing(listingId) {
+	await deleteDoc(doc(db, 'listings', listingId));
+}
+
 export function subscribeFiles(callback) {
 	return onSnapshot(collection(db, 'files'), (snapshot) => {
 		callback(mapSnapshot(snapshot));

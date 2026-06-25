@@ -33,7 +33,7 @@ export async function handle({ event, resolve }) {
 			redirect(303, homeForRole(role));
 		}
 
-		if (path.startsWith('/buyer') && role !== 'buyer') {
+		if (path.startsWith('/buyer') && role !== 'buyer' && role !== 'farmer') {
 			redirect(303, homeForRole(role));
 		}
 	}

@@ -13,6 +13,18 @@
 		// Subscribe to actual tasks if any are assigned to the farmer
 		return subscribeTasksForUser(authState.profile.id, (items) => {
 			tasks = items;
+			
+			// Auto-delete the template 'Example Task' if it exists in the database
+			const exampleTask = items.find(t => t.title === 'Example Task');
+			if (exampleTask) {
+				import('$lib/firebase-data').then(({ deleteTask }) => {
+					deleteTask(exampleTask.id).then(() => {
+						console.log('Successfully removed template Example Task');
+					}).catch(err => {
+						console.error('Error removing template task:', err);
+					});
+				});
+			}
 		});
 	});
 
