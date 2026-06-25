@@ -2,19 +2,18 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { fade, slide } from 'svelte/transition';
 
-	// Default expenses matching the design mockup
-	let expenses = $state([
-		{ id: '1', date: 'Oct 24, 2023', category: 'Fertilizer', description: 'Nitrogen Mix Alpha', amount: 850.00, status: 'Paid', statusColor: 'bg-emerald-50 text-dark-green border-emerald-100/50' },
-		{ id: '2', date: 'Oct 22, 2023', category: 'Labor', description: 'Harvesting Crew (Week 3)', amount: 1200.00, status: 'Paid', statusColor: 'bg-emerald-50 text-dark-green border-emerald-100/50' },
-		{ id: '3', date: 'Oct 18, 2023', category: 'Labor', description: 'Tractor Maintenance', amount: 450.00, status: 'Pending', statusColor: 'bg-amber-50 text-amber-800 border-amber-100/50' },
-		{ id: '4', date: 'Oct 15, 2023', category: 'Water', description: 'Irrigation System Lease', amount: 300.00, status: 'Paid', statusColor: 'bg-emerald-50 text-dark-green border-emerald-100/50' }
-	]);
+	let { data } = $props();
+
+	let expenses = $state([]);
+	$effect(() => {
+		expenses = data.expenses || [];
+	});
 
 	// Category totals calculated reactively
-	let fertilizerTotal = $derived(expenses.filter(e => e.category === 'Fertilizer').reduce((sum, e) => sum + e.amount, 0) + 3400);
-	let laborTotal = $derived(expenses.filter(e => e.category === 'Labor').reduce((sum, e) => sum + e.amount, 0) + 6450);
-	let waterTotal = $derived(expenses.filter(e => e.category === 'Water').reduce((sum, e) => sum + e.amount, 0) + 1500);
-	let electricityTotal = $derived(expenses.filter(e => e.category === 'Electricity').reduce((sum, e) => sum + e.amount, 0) + 2450);
+	let fertilizerTotal = $derived(expenses.filter(e => e.category === 'Fertilizer').reduce((sum, e) => sum + Number(e.amount || 0), 0));
+	let laborTotal = $derived(expenses.filter(e => e.category === 'Labor').reduce((sum, e) => sum + Number(e.amount || 0), 0));
+	let waterTotal = $derived(expenses.filter(e => e.category === 'Water').reduce((sum, e) => sum + Number(e.amount || 0), 0));
+	let electricityTotal = $derived(expenses.filter(e => e.category === 'Electricity').reduce((sum, e) => sum + Number(e.amount || 0), 0));
 
 	// Add expense modal state
 	let showAddModal = $state(false);
@@ -24,6 +23,19 @@
 	let newDescription = $state('');
 	let newAmount = $state('');
 	let newStatus = $state('Paid');
+	let newDate = $state(new Date().toISOString().split('T')[0]);
+
+	// Edit expense modal state
+	let showEditModal = $state(false);
+	let editId = $state(null);
+	let editCategory = $state('Fertilizer');
+	let editDescription = $state('');
+	let editAmount = $state('');
+	let editStatus = $state('Paid');
+	let editDate = $state('');
+
+	let loading = $state(false);
+	let error = $state('');
 
 	let chartInstance;
 
@@ -44,14 +56,34 @@
 	function initChart() {
 		const ctx = document.getElementById('expenseTrendChart')?.getContext('2d');
 		if (ctx) {
+			if (chartInstance) chartInstance.destroy();
+
+			const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+			const now = new Date();
+			const last6Months = [];
+			const dataPoints = [];
+			
+			for (let i = 5; i >= 0; i--) {
+				const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+				last6Months.push(months[d.getMonth()]);
+				
+				const sum = expenses
+					.filter(e => {
+						const ed = new Date(e.rawDate || e.date || e.createdAt);
+						return ed.getMonth() === d.getMonth() && ed.getFullYear() === d.getFullYear();
+					})
+					.reduce((acc, e) => acc + Number(e.amount || 0), 0);
+				dataPoints.push(sum);
+			}
+
 			chartInstance = new Chart(ctx, {
 				type: 'line',
 				data: {
-					labels: ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'],
+					labels: last6Months,
 					datasets: [
 						{
-							label: 'Operational Expenses ($)',
-							data: [12000, 14200, 11500, 15000, 16800, 16600],
+							label: 'Operational Expenses (₹)',
+							data: dataPoints,
 							borderColor: '#006b2c', // primary-green
 							backgroundColor: 'rgba(22, 163, 74, 0.05)',
 							borderWidth: 3,
@@ -84,44 +116,122 @@
 		}
 	}
 
-	function handleAddExpense(event) {
+	async function handleAddExpense(event) {
 		event.preventDefault();
-		const options = { month: 'short', day: '2-digit', year: 'numeric' };
-		const formattedDate = new Date().toLocaleDateString('en-US', options);
+		loading = true;
+		error = '';
 
-		expenses.unshift({
-			id: String(Date.now()),
-			date: formattedDate,
-			category: newCategory,
-			description: newDescription,
-			amount: Number(newAmount),
-			status: newStatus,
-			statusColor: newStatus === 'Paid' 
-				? 'bg-emerald-50 text-dark-green border-emerald-100/50' 
-				: 'bg-amber-50 text-amber-800 border-amber-100/50'
-		});
+		try {
+			const res = await fetch('/api/expenses', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					category: newCategory,
+					description: newDescription,
+					amount: Number(newAmount),
+					status: newStatus,
+					date: newDate
+				})
+			});
 
-		// Update chart data if loaded
-		if (chartInstance) {
-			const currentData = chartInstance.data.datasets[0].data;
-			currentData[currentData.length - 1] += Number(newAmount);
-			chartInstance.update();
+			if (!res.ok) {
+				const data = await res.json();
+				throw new Error(data.error || 'Failed to log expense');
+			}
+
+			const addedExpense = await res.json();
+			expenses = [addedExpense, ...expenses];
+
+			if (chartInstance) {
+				initChart();
+			}
+
+			// Reset form
+			newCategory = 'Fertilizer';
+			newDescription = '';
+			newAmount = '';
+			newStatus = 'Paid';
+			newDate = new Date().toISOString().split('T')[0];
+			showAddModal = false;
+		} catch (err) {
+			error = err.message;
+		} finally {
+			loading = false;
 		}
-
-		// Reset form
-		newCategory = 'Fertilizer';
-		newDescription = '';
-		newAmount = '';
-		newStatus = 'Paid';
-		showAddModal = false;
 	}
 
-	function handleDeleteExpense(id, amount) {
-		expenses = expenses.filter(e => e.id !== id);
-		if (chartInstance) {
-			const currentData = chartInstance.data.datasets[0].data;
-			currentData[currentData.length - 1] = Math.max(0, currentData[currentData.length - 1] - amount);
-			chartInstance.update();
+	async function handleDeleteExpense(id, amount) {
+		if (!confirm('Are you sure you want to delete this expense?')) return;
+		try {
+			const res = await fetch(`/api/expenses/${id}`, {
+				method: 'DELETE'
+			});
+
+			if (!res.ok) {
+				const data = await res.json();
+				throw new Error(data.error || 'Failed to delete expense');
+			}
+
+			expenses = expenses.filter(e => e.id !== id);
+			if (chartInstance) {
+				initChart();
+			}
+		} catch (err) {
+			alert(err.message);
+		}
+	}
+
+	function openEditModal(expense) {
+		editId = expense.id;
+		editCategory = expense.category;
+		editDescription = expense.description;
+		editAmount = expense.amount;
+		editStatus = expense.status;
+		
+		try {
+			editDate = expense.rawDate ? expense.rawDate.split('T')[0] : new Date(expense.date).toISOString().split('T')[0];
+		} catch (e) {
+			editDate = new Date().toISOString().split('T')[0];
+		}
+		
+		showEditModal = true;
+	}
+
+	async function handleEditExpense(event) {
+		event.preventDefault();
+		loading = true;
+		error = '';
+
+		try {
+			const res = await fetch(`/api/expenses/${editId}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					category: editCategory,
+					description: editDescription,
+					amount: Number(editAmount),
+					status: editStatus,
+					date: editDate
+				})
+			});
+
+			if (!res.ok) {
+				const data = await res.json();
+				throw new Error(data.error || 'Failed to update expense');
+			}
+
+			const updatedExpense = await res.json();
+			expenses = expenses.map(e => e.id === editId ? updatedExpense : e);
+
+			if (chartInstance) {
+				initChart();
+			}
+
+			showEditModal = false;
+		} catch (err) {
+			error = err.message;
+		} finally {
+			loading = false;
 		}
 	}
 </script>
@@ -176,15 +286,27 @@
 						</label>
 					</div>
 
-					<label class="block">
-						<span class="block mb-1">Amount ($)</span>
-						<input type="number" step="0.01" bind:value={newAmount} required placeholder="0.00" class="input-field w-full text-xs" />
-					</label>
+					<div class="grid grid-cols-2 gap-4">
+						<label class="block">
+							<span class="block mb-1">Amount (₹)</span>
+							<input type="number" step="0.01" bind:value={newAmount} required placeholder="0.00" class="input-field w-full text-xs" />
+						</label>
+						<label class="block">
+							<span class="block mb-1">Date</span>
+							<input type="date" bind:value={newDate} required class="input-field w-full text-xs" />
+						</label>
+					</div>
 
 					<label class="block">
 						<span class="block mb-1">Description</span>
 						<input type="text" bind:value={newDescription} required placeholder="e.g. Nitrogen Mix Alpha purchase" class="input-field w-full text-xs" />
 					</label>
+
+					{#if error}
+						<div class="rounded-2xl bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700 animate-fade-in">
+							⚠️ {error}
+						</div>
+					{/if}
 
 					<div class="flex gap-3 pt-3 border-t border-slate-100">
 						<button 
@@ -199,6 +321,78 @@
 							class="btn-primary flex-1 py-3 text-xs"
 						>
 							Log Expense
+						</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Edit Expense Modal -->
+	{#if showEditModal}
+		<div transition:fade={{ duration: 150 }} class="fixed inset-0 bg-slate-950/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+			<div transition:slide={{ duration: 200 }} class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md p-6 overflow-hidden">
+				<div class="flex justify-between items-center pb-4 border-b border-slate-100">
+					<h3 class="font-extrabold text-slate-800 text-base font-headline-md">Edit Expense</h3>
+					<button onclick={() => showEditModal = false} class="text-slate-400 hover:text-slate-600 transition-colors">
+						<span class="material-symbols-outlined text-lg">close</span>
+					</button>
+				</div>
+				<form onsubmit={handleEditExpense} class="mt-4 space-y-4 text-xs font-semibold text-slate-700">
+					<div class="grid grid-cols-2 gap-4">
+						<label class="block">
+							<span class="block mb-1">Category</span>
+							<select bind:value={editCategory} class="input-field w-full text-xs bg-white py-[9.5px]">
+								<option value="Fertilizer">Fertilizer</option>
+								<option value="Labor">Labor</option>
+								<option value="Water">Water</option>
+								<option value="Electricity">Electricity</option>
+							</select>
+						</label>
+						<label class="block">
+							<span class="block mb-1">Status</span>
+							<select bind:value={editStatus} class="input-field w-full text-xs bg-white py-[9.5px]">
+								<option value="Paid">Paid</option>
+								<option value="Pending">Pending</option>
+							</select>
+						</label>
+					</div>
+
+					<div class="grid grid-cols-2 gap-4">
+						<label class="block">
+							<span class="block mb-1">Amount (₹)</span>
+							<input type="number" step="0.01" bind:value={editAmount} required placeholder="0.00" class="input-field w-full text-xs" />
+						</label>
+						<label class="block">
+							<span class="block mb-1">Date</span>
+							<input type="date" bind:value={editDate} required class="input-field w-full text-xs" />
+						</label>
+					</div>
+
+					<label class="block">
+						<span class="block mb-1">Description</span>
+						<input type="text" bind:value={editDescription} required class="input-field w-full text-xs" />
+					</label>
+
+					{#if error}
+						<div class="rounded-2xl bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700 animate-fade-in">
+							⚠️ {error}
+						</div>
+					{/if}
+
+					<div class="flex gap-3 pt-3 border-t border-slate-100">
+						<button 
+							type="button" 
+							onclick={() => showEditModal = false}
+							class="btn-secondary flex-1 py-3 text-xs"
+						>
+							Cancel
+						</button>
+						<button 
+							type="submit" 
+							class="btn-primary flex-1 py-3 text-xs"
+						>
+							Save Changes
 						</button>
 					</div>
 				</form>
@@ -228,7 +422,7 @@
 				</div>
 				<div>
 					<p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fertilizer</p>
-					<p class="text-lg font-black text-slate-800 mt-0.5">${fertilizerTotal.toLocaleString()}</p>
+					<p class="text-lg font-black text-slate-800 mt-0.5">₹{fertilizerTotal.toLocaleString()}</p>
 				</div>
 			</div>
 			<!-- Labor -->
@@ -238,7 +432,7 @@
 				</div>
 				<div>
 					<p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Labor</p>
-					<p class="text-lg font-black text-slate-800 mt-0.5">${laborTotal.toLocaleString()}</p>
+					<p class="text-lg font-black text-slate-800 mt-0.5">₹{laborTotal.toLocaleString()}</p>
 				</div>
 			</div>
 			<!-- Water -->
@@ -248,7 +442,7 @@
 				</div>
 				<div>
 					<p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Water</p>
-					<p class="text-lg font-black text-slate-800 mt-0.5">${waterTotal.toLocaleString()}</p>
+					<p class="text-lg font-black text-slate-800 mt-0.5">₹{waterTotal.toLocaleString()}</p>
 				</div>
 			</div>
 			<!-- Electricity -->
@@ -258,7 +452,7 @@
 				</div>
 				<div>
 					<p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Electricity</p>
-					<p class="text-lg font-black text-slate-800 mt-0.5">${electricityTotal.toLocaleString()}</p>
+					<p class="text-lg font-black text-slate-800 mt-0.5">₹{electricityTotal.toLocaleString()}</p>
 				</div>
 			</div>
 		</div>
@@ -288,19 +482,29 @@
 							<td class="p-4 pl-6 text-slate-400">{expense.date}</td>
 							<td class="p-4 font-bold text-slate-800">{expense.category}</td>
 							<td class="p-4 text-slate-500">{expense.description}</td>
-							<td class="p-4 font-extrabold text-slate-800">${expense.amount.toFixed(2)}</td>
+							<td class="p-4 font-extrabold text-slate-800">₹{expense.amount.toFixed(2)}</td>
 							<td class="p-4">
 								<span class={['px-2.5 py-0.5 rounded-full text-[10px] font-bold border', expense.statusColor]}>
 									{expense.status}
 								</span>
 							</td>
 							<td class="p-4 pr-6 text-center">
-								<button 
-									onclick={() => handleDeleteExpense(expense.id, expense.amount)}
-									class="text-red-500 hover:text-red-700 transition-colors p-1"
-								>
-									<span class="material-symbols-outlined text-[18px]">delete</span>
-								</button>
+								<div class="flex items-center justify-center gap-1">
+									<button 
+										onclick={() => openEditModal(expense)}
+										class="text-primary-green hover:text-dark-green transition-colors p-1"
+										title="Edit"
+									>
+										<span class="material-symbols-outlined text-[18px]">edit</span>
+									</button>
+									<button 
+										onclick={() => handleDeleteExpense(expense.id, expense.amount)}
+										class="text-red-500 hover:text-red-700 transition-colors p-1"
+										title="Delete"
+									>
+										<span class="material-symbols-outlined text-[18px]">delete</span>
+									</button>
+								</div>
 							</td>
 						</tr>
 					{/each}

@@ -1,0 +1,77 @@
+import { json } from '@sveltejs/kit';
+import { adminDb } from '$lib/server/firebase-admin';
+
+/** @type {import('./$types').RequestHandler} */
+export async function GET({ locals }) {
+	if (!locals.user) {
+		return json({ error: 'Unauthorized' }, { status: 401 });
+	}
+
+	if (locals.profile?.role !== 'farmer') {
+		return json({ error: 'Forbidden' }, { status: 403 });
+	}
+
+	try {
+		const snapshot = await adminDb.collection('expenses')
+			.where('farmerId', '==', locals.user.uid)
+			.get();
+		
+		const expenses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+		return json(expenses);
+	} catch (error) {
+		console.error('Error fetching expenses:', error);
+		return json({ error: 'Internal Server Error' }, { status: 500 });
+	}
+}
+
+/** @type {import('./$types').RequestHandler} */
+export async function POST({ request, locals }) {
+	if (!locals.user) {
+		return json({ error: 'Unauthorized' }, { status: 401 });
+	}
+
+	if (locals.profile?.role !== 'farmer') {
+		return json({ error: 'Forbidden' }, { status: 403 });
+	}
+
+	try {
+		const body = await request.json();
+		const { category, description, amount, status, date } = body;
+
+		// Manual Validation
+		if (!category || typeof category !== 'string' || category.trim().length === 0) {
+			return json({ error: 'Category is required' }, { status: 400 });
+		}
+		if (!description || typeof description !== 'string') {
+			return json({ error: 'Description must be a string' }, { status: 400 });
+		}
+		if (amount === undefined || isNaN(Number(amount)) || Number(amount) <= 0) {
+			return json({ error: 'Amount must be a valid positive number' }, { status: 400 });
+		}
+		if (!status || !['Paid', 'Pending'].includes(status)) {
+			return json({ error: 'Status must be Paid or Pending' }, { status: 400 });
+		}
+
+		const statusColor = status === 'Paid'
+			? 'bg-emerald-50 text-dark-green border-emerald-100/50'
+			: 'bg-amber-50 text-amber-800 border-amber-100/50';
+
+		const newExpense = {
+			category,
+			description,
+			amount: Number(amount),
+			status,
+			statusColor,
+			date: date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+			rawDate: date ? new Date(date).toISOString() : new Date().toISOString(),
+			farmerId: locals.user.uid,
+			createdAt: new Date().toISOString()
+		};
+
+		const docRef = await adminDb.collection('expenses').add(newExpense);
+		return json({ id: docRef.id, ...newExpense }, { status: 201 });
+	} catch (error) {
+		console.error('Error creating expense:', error);
+		return json({ error: 'Internal Server Error' }, { status: 500 });
+	}
+}

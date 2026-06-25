@@ -1,45 +1,12 @@
 <script>
 	import { fade, slide } from 'svelte/transition';
 
-	// Default active crops matching the Stitch design
-	let crops = $state([
-		{
-			id: 'corn',
-			name: 'Sweet Corn',
-			location: 'Field Block A',
-			stage: 'Vegetative Stage',
-			stageColor: 'bg-emerald-50 text-dark-green border-emerald-100/50',
-			statusDot: 'bg-primary-green',
-			plantedDate: 'Apr 12',
-			progress: 45,
-			acres: 50,
-			imageUrl: 'https://images.unsplash.com/photo-1551754655-cd27e38d20f6?auto=format&fit=crop&w=600&q=80'
-		},
-		{
-			id: 'wheat',
-			name: 'Winter Wheat',
-			location: 'North Plateau',
-			stage: 'Harvest-Ready',
-			stageColor: 'bg-amber-50 text-amber-800 border-amber-100/50',
-			statusDot: 'bg-amber-500',
-			plantedDate: 'Oct 05',
-			progress: 95,
-			acres: 120,
-			imageUrl: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&w=600&q=80'
-		},
-		{
-			id: 'soybean',
-			name: 'Organic Soybeans',
-			location: 'Valley Section 3',
-			stage: 'Flowering Stage',
-			stageColor: 'bg-indigo-50 text-indigo-700 border-indigo-100/50',
-			statusDot: 'bg-indigo-500',
-			plantedDate: 'May 20',
-			progress: 65,
-			acres: 75,
-			imageUrl: 'https://images.unsplash.com/photo-1599599810769-bcde5a160d32?auto=format&fit=crop&w=600&q=80'
-		}
-	]);
+	let { data } = $props();
+
+	let crops = $state([]);
+	$effect(() => {
+		crops = data.crops || [];
+	});
 
 	// Show/hide add crop dialog
 	let showAddModal = $state(false);
@@ -53,47 +20,69 @@
 	let newAcres = $state(10);
 	let newImageUrl = $state('');
 
-	function handleAddCrop(event) {
+	let loading = $state(false);
+	let error = $state('');
+
+	async function handleAddCrop(event) {
 		event.preventDefault();
-		const defaultImage = 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&w=600&q=80';
-		
-		let stageColor = 'bg-emerald-50 text-dark-green border-emerald-100/50';
-		let statusDot = 'bg-primary-green';
+		loading = true;
+		error = '';
 
-		if (newStage === 'Harvest-Ready') {
-			stageColor = 'bg-amber-50 text-amber-800 border-amber-100/50';
-			statusDot = 'bg-amber-500';
-		} else if (newStage === 'Flowering Stage') {
-			stageColor = 'bg-indigo-50 text-indigo-700 border-indigo-100/50';
-			statusDot = 'bg-indigo-500';
+		try {
+			const res = await fetch('/api/crops', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					name: newName,
+					location: newLocation,
+					stage: newStage,
+					plantedDate: newPlantedDate || 'Today',
+					progress: Number(newProgress),
+					acres: Number(newAcres),
+					imageUrl: newImageUrl
+				})
+			});
+
+			if (!res.ok) {
+				const data = await res.json();
+				throw new Error(data.error || 'Failed to add crop');
+			}
+
+			const addedCrop = await res.json();
+			crops = [...crops, addedCrop];
+
+			// Clear form & close
+			newName = '';
+			newLocation = '';
+			newStage = 'Vegetative Stage';
+			newPlantedDate = '';
+			newProgress = 50;
+			newAcres = 10;
+			newImageUrl = '';
+			showAddModal = false;
+		} catch (err) {
+			error = err.message;
+		} finally {
+			loading = false;
 		}
-
-		crops.push({
-			id: String(Date.now()),
-			name: newName,
-			location: newLocation,
-			stage: newStage,
-			stageColor,
-			statusDot,
-			plantedDate: newPlantedDate || 'Today',
-			progress: Number(newProgress),
-			acres: Number(newAcres),
-			imageUrl: newImageUrl || defaultImage
-		});
-
-		// Clear form & close
-		newName = '';
-		newLocation = '';
-		newStage = 'Vegetative Stage';
-		newPlantedDate = '';
-		newProgress = 50;
-		newAcres = 10;
-		newImageUrl = '';
-		showAddModal = false;
 	}
 
-	function handleDeleteCrop(id) {
-		crops = crops.filter(c => c.id !== id);
+	async function handleDeleteCrop(id) {
+		if (!confirm('Are you sure you want to delete this crop?')) return;
+		try {
+			const res = await fetch(`/api/crops/${id}`, {
+				method: 'DELETE'
+			});
+
+			if (!res.ok) {
+				const data = await res.json();
+				throw new Error(data.error || 'Failed to delete crop');
+			}
+
+			crops = crops.filter(c => c.id !== id);
+		} catch (err) {
+			alert(err.message);
+		}
 	}
 </script>
 
@@ -168,6 +157,12 @@
 						<span class="block mb-1">Image URL (Optional)</span>
 						<input type="url" bind:value={newImageUrl} placeholder="https://..." class="input-field w-full text-xs" />
 					</label>
+
+					{#if error}
+						<div class="rounded-2xl bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700 animate-fade-in">
+							⚠️ {error}
+						</div>
+					{/if}
 
 					<div class="flex gap-3 pt-3 border-t border-slate-100">
 						<button 
