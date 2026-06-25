@@ -1,6 +1,8 @@
 <script>
 	import { fade, slide } from 'svelte/transition';
 
+	let { data } = $props();
+
 	// Reactive states using Svelte 5 runes
 	let imageLoaded = $state(false);
 	let scanning = $state(false);
@@ -51,16 +53,10 @@
 	let selectedLeaf = $derived(leafPresets[selectedPresetIndex]);
 
 	// History of recent scans
-	let recentScans = $state([
-		{
-			id: 'scan-1',
-			crop: 'Potato - Field B',
-			pathogen: 'Healthy',
-			statusColor: 'text-dark-green bg-emerald-50 border-emerald-100/50',
-			time: '2h ago',
-			image: 'https://lh3.googleusercontent.com/aida-public/AB6AXu8Fjey_BmSvrU2kOY6X2Qo-phKkZodEqyMTKEj5U1bu9LJg_QGcIE-rWRTuNo_zpSVMLXIE87GxLQnxEOW49z8Y47uXSejLE2aORA7fnW4e6Kg30TV-mDuezEEdRD2UKbxt715Yl2Cv9qH7BiQLtbBxj0-ZkRrvhisviMpLZrymakqEnxRqZEN1EUF8n65Vvf0PCjOd9naXwMSWelo5Bv7fr7qz5rkbSZ-6yPAKveFCtZf_o2s7vcxpetJr4-dfvEQcQxvdqprCrU'
-		}
-	]);
+	let recentScans = $state([]);
+	$effect(() => {
+		recentScans = data.history || [];
+	});
 
 	function selectPreset(index) {
 		if (scanning) return;
@@ -76,32 +72,40 @@
 		scanCompleted = false;
 	}
 
-	function handleScan() {
+	async function handleScan() {
 		if (!imageLoaded || scanning) return;
 
 		scanning = true;
 		scanCompleted = false;
 
-		setTimeout(() => {
-			scanning = false;
-			scanCompleted = true;
+		// Simulated scan delay for UX, then calls BFF API to finalize and save diagnosis
+		setTimeout(async () => {
+			try {
+				const res = await fetch('/api/disease-detection', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						presetId: selectedLeaf.id,
+						imageUrl: selectedLeaf.image
+					})
+				});
 
-			// Add to recent scans list
-			const newScan = {
-				id: `scan-${Date.now()}`,
-				crop: selectedLeaf.field,
-				pathogen: selectedLeaf.pathogen,
-				statusColor: selectedLeaf.pathogen.includes('Healthy') 
-					? 'text-dark-green bg-emerald-50 border-emerald-100/50' 
-					: selectedLeaf.severity === 'High' 
-						? 'text-red-700 bg-red-50 border-red-100/50' 
-						: 'text-amber-800 bg-amber-50 border-amber-100/50',
-				time: 'Just now',
-				image: selectedLeaf.image
-			};
+				if (!res.ok) {
+					const data = await res.json();
+					throw new Error(data.error || 'Failed to analyze leaf');
+				}
 
-			recentScans = [newScan, ...recentScans];
-		}, 2000); // 2 seconds animation simulation
+				const scanResult = await res.json();
+				recentScans = [scanResult, ...recentScans];
+				
+				scanning = false;
+				scanCompleted = true;
+			} catch (err) {
+				console.error('Scan error:', err);
+				scanning = false;
+				alert(err.message);
+			}
+		}, 1500);
 	}
 
 	function handleReset() {

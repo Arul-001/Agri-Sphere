@@ -2,7 +2,9 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { authState } from '$lib/auth.svelte.js';
-	import { loginWithEmail, loginWithGoogle, roleHome } from '$lib/firebase-data';
+	import { roleHome } from '$lib/firebase-data';
+	import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+	import { auth } from '$lib/firebase';
 
 	let email = $state('');
 	let password = $state('');
@@ -11,7 +13,8 @@
 	let error = $state('');
 
 	// Get role from query parameter or default to 'farmer'
-	let role = $derived(page.url.searchParams.get('role') || 'farmer');
+	let roleParam = $derived(page.url.searchParams.get('role') || 'farmer');
+	let role = $derived(roleParam === 'buyer' ? 'customer' : roleParam);
 
 	$effect(() => {
 		if (!authState.loading && authState.profile) {
@@ -25,9 +28,7 @@
 		error = '';
 
 		try {
-			// In production, we'd handle rememberMe using firebase persistence API if needed,
-			// here we focus on the UI and standard logins
-			await loginWithEmail({ email, password });
+			await signInWithEmailAndPassword(auth, email, password);
 		} catch (err) {
 			error = err.message;
 		} finally {
@@ -40,7 +41,8 @@
 		error = '';
 
 		try {
-			await loginWithGoogle();
+			const provider = new GoogleAuthProvider();
+			await signInWithPopup(auth, provider);
 		} catch (err) {
 			error = err.message;
 		} finally {
@@ -51,7 +53,7 @@
 	// Dynamic descriptive text based on role
 	const roleMeta = {
 		farmer: { label: 'Farmer 🌱', desc: 'Manage your harvests, list produce, and view direct buyers.' },
-		buyer: { label: 'Buyer 🛒', desc: 'Browse fresh yields, manage orders, and connect with direct growers.' },
+		customer: { label: 'Customer 🛒', desc: 'Browse fresh yields, manage orders, and connect with direct growers.' },
 		admin: { label: 'Admin ⚙️', desc: 'Platform settings, access verification, and user management.' }
 	};
 	let currentMeta = $derived(roleMeta[role] || roleMeta['farmer']);

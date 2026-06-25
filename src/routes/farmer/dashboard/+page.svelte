@@ -1,38 +1,29 @@
 <script>
 	import { onMount } from 'svelte';
-	import { authState } from '$lib/auth.svelte.js';
-	import { subscribeTasksForUser } from '$lib/firebase-data';
 
-	let tasks = $state([]);
+	let { data } = $props();
+
+	let crops = $derived(data.crops || []);
+	let expenses = $derived(data.expenses || []);
+	let inventory = $derived(data.inventory || []);
+	let weather = $derived(data.weather || { temp: 32, humidity: 45, windSpeed: 12, soilMoisture: 'Optimal' });
+
+	// Compute summaries
+	let totalExpenses = $derived(expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0));
+	let totalStock = $derived(inventory.reduce((sum, item) => sum + Number(item.quantity || 0), 0));
+	
+	// Format currency
+	function formatCurrency(val) {
+		return new Intl.NumberFormat('en-IN', {
+			style: 'currency',
+			currency: 'INR',
+			maximumFractionDigits: 0
+		}).format(val);
+	}
+
 	let financialChartInstance;
 	let cropChartInstance;
 
-	$effect(() => {
-		if (!authState.profile?.id) return;
-		
-		// Subscribe to actual tasks if any are assigned to the farmer
-		return subscribeTasksForUser(authState.profile.id, (items) => {
-			tasks = items;
-			
-			// Auto-delete the template 'Example Task' if it exists in the database
-			const exampleTask = items.find(t => t.title === 'Example Task');
-			if (exampleTask) {
-				import('$lib/firebase-data').then(({ deleteTask }) => {
-					deleteTask(exampleTask.id).then(() => {
-						console.log('Successfully removed template Example Task');
-					}).catch(err => {
-						console.error('Error removing template task:', err);
-					});
-				});
-			}
-		});
-	});
-
-	// Weather data state
-	let weatherTemp = $state(32);
-	let soilMoisture = $state('Optimal');
-	let humidity = $state(45);
-	let windSpeed = $state(12);
 
 	onMount(() => {
 		// Initialize Chart.js once loaded from layout.svelte
@@ -54,15 +45,36 @@
 		// Financial Overview Chart (Mixed Line/Bar)
 		const ctxFin = document.getElementById('financialChart')?.getContext('2d');
 		if (ctxFin) {
+			const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+			const now = new Date();
+			const last6Months = [];
+			const expenseDataPoints = [];
+			const profitDataPoints = []; // Placeholder until income is tracked
+			
+			for (let i = 5; i >= 0; i--) {
+				const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+				last6Months.push(months[d.getMonth()]);
+				
+				const monthlyExp = expenses
+					.filter(e => {
+						const ed = new Date(e.rawDate || e.date || e.createdAt);
+						return ed.getMonth() === d.getMonth() && ed.getFullYear() === d.getFullYear();
+					})
+					.reduce((acc, e) => acc + Number(e.amount || 0), 0);
+				
+				expenseDataPoints.push(monthlyExp);
+				profitDataPoints.push(monthlyExp * 1.5); // Simple placeholder projection
+			}
+
 			financialChartInstance = new Chart(ctxFin, {
 				type: 'bar',
 				data: {
-					labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
+					labels: last6Months,
 					datasets: [
 						{
 							type: 'line',
 							label: 'Expense Trend',
-							data: [3200, 3500, 3100, 4200, 3800, 4000, 4200],
+							data: expenseDataPoints,
 							borderColor: '#ba1a1a', // error
 							borderWidth: 2.5,
 							tension: 0.4,
@@ -73,8 +85,8 @@
 						},
 						{
 							type: 'bar',
-							label: 'Monthly Profit',
-							data: [5000, 6200, 5800, 7100, 6900, 8000, 8500],
+							label: 'Projected Profit',
+							data: profitDataPoints,
 							backgroundColor: '#16A34A', // primary-green
 							borderRadius: 8,
 							barPercentage: 0.55
@@ -103,12 +115,16 @@
 		// Crop Performance Doughnut Chart
 		const ctxCrop = document.getElementById('cropChart')?.getContext('2d');
 		if (ctxCrop) {
+			// Compute acreage per crop
+			const cropNames = crops.map(c => c.name);
+			const cropAcres = crops.map(c => c.acres || 10);
+			
 			cropChartInstance = new Chart(ctxCrop, {
 				type: 'doughnut',
 				data: {
-					labels: ['Wheat', 'Rice', 'Barley', 'Maize'],
+					labels: cropNames.length > 0 ? cropNames : ['Wheat', 'Rice', 'Barley', 'Maize'],
 					datasets: [{
-						data: [40, 30, 18, 12],
+						data: cropAcres.length > 0 ? cropAcres : [40, 30, 18, 12],
 						backgroundColor: [
 							'#15803D', // dark-green
 							'#16A34A', // primary-green
@@ -169,12 +185,12 @@
 					<span class="material-symbols-outlined text-[22px]">psychology</span>
 				</div>
 				<span class="bg-emerald-100 text-dark-green px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-0.5">
-					<span class="material-symbols-outlined text-[12px]">arrow_upward</span> 12%
+					Active
 				</span>
 			</div>
 			<div>
 				<p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Harvests</p>
-				<h3 class="text-2xl font-extrabold text-slate-800 mt-1">4 Crops</h3>
+				<h3 class="text-2xl font-extrabold text-slate-800 mt-1">{crops.length} Crops</h3>
 			</div>
 		</div>
 
@@ -184,13 +200,13 @@
 				<div class="size-10 rounded-2xl bg-red-50 flex items-center justify-center text-red-500">
 					<span class="material-symbols-outlined text-[22px]">payments</span>
 				</div>
-				<span class="bg-red-50 text-red-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-0.5">
-					<span class="material-symbols-outlined text-[12px]">arrow_upward</span> 5%
+				<span class="bg-red-50 text-red-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+					Tracked
 				</span>
 			</div>
 			<div>
 				<p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Expenses</p>
-				<h3 class="text-2xl font-extrabold text-slate-800 mt-1">₹32,400</h3>
+				<h3 class="text-2xl font-extrabold text-slate-800 mt-1">{formatCurrency(totalExpenses)}</h3>
 			</div>
 		</div>
 
@@ -206,7 +222,7 @@
 			</div>
 			<div>
 				<p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Available Stock</p>
-				<h3 class="text-2xl font-extrabold text-slate-800 mt-1">2,450 <span class="text-xs text-slate-400 font-bold uppercase">kg</span></h3>
+				<h3 class="text-2xl font-extrabold text-slate-800 mt-1">{(totalStock || 0).toLocaleString()} <span class="text-xs text-slate-400 font-bold uppercase">Units</span></h3>
 			</div>
 		</div>
 
@@ -270,56 +286,32 @@
 					<thead>
 						<tr class="border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
 							<th class="py-2.5">Activity</th>
-							<th class="py-2.5">Date / Time</th>
-							<th class="py-2.5">Status</th>
+							<th class="py-2.5">Category</th>
+							<th class="py-2.5">Detail</th>
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-slate-50 text-slate-600 font-medium">
-						<tr class="hover:bg-slate-50/50 transition-colors">
-							<td class="py-3.5">
-								<div class="flex items-center gap-3">
-									<div class="size-8 rounded-full bg-emerald-50 text-primary-green flex items-center justify-center">
-										<span class="material-symbols-outlined text-[16px]">water_drop</span>
+						{#each crops.slice(0, 3) as crop}
+							<tr class="hover:bg-slate-50/50 transition-colors">
+								<td class="py-3.5">
+									<div class="flex items-center gap-3">
+										<div class="size-8 rounded-full bg-emerald-50 text-primary-green flex items-center justify-center">
+											<span class="material-symbols-outlined text-[16px]">agriculture</span>
+										</div>
+										<div>
+											<p class="font-bold text-slate-800">{crop.name}</p>
+											<p class="text-[10px] text-slate-400">{crop.location}</p>
+										</div>
 									</div>
-									<div>
-										<p class="font-bold text-slate-800">Drip Irrigation Activated</p>
-										<p class="text-[10px] text-slate-400">Field Block A (Wheat)</p>
-									</div>
-								</div>
-							</td>
-							<td class="py-3.5 text-slate-400">Today, 08:30 AM</td>
-							<td class="py-3.5"><span class="px-2 py-0.5 rounded-full bg-emerald-50 text-dark-green text-[10px] font-bold border border-emerald-100">Optimal</span></td>
-						</tr>
-						<tr class="hover:bg-slate-50/50 transition-colors">
-							<td class="py-3.5">
-								<div class="flex items-center gap-3">
-									<div class="size-8 rounded-full bg-emerald-50 text-dark-green flex items-center justify-center">
-										<span class="material-symbols-outlined text-[16px]">agriculture</span>
-									</div>
-									<div>
-										<p class="font-bold text-slate-800">Basmati Harvest Logged</p>
-										<p class="text-[10px] text-slate-400">North Valley • 90 Quintals</p>
-									</div>
-								</div>
-							</td>
-							<td class="py-3.5 text-slate-400">Yesterday, 02:15 PM</td>
-							<td class="py-3.5"><span class="px-2 py-0.5 rounded-full bg-emerald-50 text-dark-green text-[10px] font-bold border border-emerald-100">Completed</span></td>
-						</tr>
-						<tr class="hover:bg-slate-50/50 transition-colors">
-							<td class="py-3.5">
-								<div class="flex items-center gap-3">
-									<div class="size-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center">
-										<span class="material-symbols-outlined text-[16px]">warning</span>
-									</div>
-									<div>
-										<p class="font-bold text-slate-800">Fertilizer Stock Low</p>
-										<p class="text-[10px] text-slate-400">NPK 15-15-15 • Warehouse A</p>
-									</div>
-								</div>
-							</td>
-							<td class="py-3.5 text-slate-400">Oct 12, 09:00 AM</td>
-							<td class="py-3.5"><span class="px-2 py-0.5 rounded-full bg-red-50 text-red-700 text-[10px] font-bold border border-red-100">Restock</span></td>
-						</tr>
+								</td>
+								<td class="py-3.5 text-slate-400">Crop Cycle</td>
+								<td class="py-3.5"><span class="px-2 py-0.5 rounded-full bg-emerald-50 text-dark-green text-[10px] font-bold border border-emerald-100">{crop.stage}</span></td>
+							</tr>
+						{:else}
+							<tr class="hover:bg-slate-50/50 transition-colors">
+								<td class="py-3.5 text-slate-400 text-center" colspan="3">No crop activities logged yet.</td>
+							</tr>
+						{/each}
 					</tbody>
 				</table>
 			</div>
@@ -338,57 +330,30 @@
 				</div>
 
 				<div>
-					<p class="text-5xl font-light tracking-tight leading-none text-white">{weatherTemp}°<span class="text-base font-medium text-white/80">C</span></p>
+					<p class="text-5xl font-light tracking-tight leading-none text-white">{weather.temp}°<span class="text-base font-medium text-white/80">C</span></p>
 					<p class="text-xs font-semibold text-white/80 mt-1">Partly Cloudy • Humid</p>
 				</div>
 
 				<div class="space-y-2 pt-2 border-t border-white/10">
 					<div class="flex justify-between items-center text-[11px] font-semibold text-white/90">
 						<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">humidity_mid</span> Humidity</span>
-						<span>{humidity}%</span>
+						<span>{weather.humidity}%</span>
 					</div>
 					<div class="w-full bg-white/25 rounded-full h-1">
-						<div class="bg-yellow-300 h-1 rounded-full" style="width: {humidity}%"></div>
+						<div class="bg-yellow-300 h-1 rounded-full" style="width: {weather.humidity}%"></div>
 					</div>
 					<div class="flex justify-between items-center text-[11px] font-semibold text-white/95 pt-0.5">
 						<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">air</span> Wind</span>
-						<span>{windSpeed} km/h</span>
+						<span>{weather.windSpeed} km/h</span>
 					</div>
 					<div class="flex justify-between items-center text-[11px] font-semibold text-white/95 pt-0.5">
 						<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">water_drop</span> Soil Moisture</span>
-						<span class="text-yellow-300">{soilMoisture}</span>
+						<span class="text-yellow-300">{weather.soilMoisture}</span>
 					</div>
 				</div>
 			</div>
 		</div>
 
 	</div>
-
-	<!-- Assigned Tasks List from Admin (If any tasks exist) -->
-	{#if tasks.length > 0}
-		<div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-			<h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-				📋 Assigned Tasks from Admin
-			</h2>
-			<div class="grid gap-4 md:grid-cols-2">
-				{#each tasks as task (task.id)}
-					<div class="border border-slate-100 rounded-2xl p-4 space-y-2 flex flex-col justify-between">
-						<div>
-							<div class="flex items-center justify-between">
-								<h3 class="font-bold text-slate-800">{task.title}</h3>
-								<span class="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-									{task.status}
-								</span>
-							</div>
-							<p class="text-xs text-slate-500 mt-1.5 leading-relaxed">{task.description}</p>
-						</div>
-						<div class="text-[9px] text-slate-400 font-medium pt-2">
-							Assigned {task.createdAtLabel}
-						</div>
-					</div>
-				{/each}
-			</div>
-		</div>
-	{/if}
 
 </section>

@@ -1,14 +1,13 @@
 <script>
 	import { fade, slide } from 'svelte/transition';
+	import { invalidateAll } from '$app/navigation';
 
-	// Default stock entries matching the Stitch design
-	let stockItems = $state([
-		{ id: '1', name: 'Premium Wheat Seed', category: 'Seeds', icon: 'grass', total: 5000, soldUsed: 1200, unit: 'kg', progress: 76, status: 'Optimal', statusColor: 'bg-emerald-50 text-dark-green border-emerald-100/50' },
-		{ id: '2', name: 'Nitrogen Fertilizer (N20)', category: 'Chemicals', icon: 'science', total: 2000, soldUsed: 1700, unit: 'L', progress: 15, status: 'Low', statusColor: 'bg-red-50 text-red-700 border-red-105/50' },
-		{ id: '3', name: 'Irrigation Drip Tape', category: 'Equipment', icon: 'precision_manufacturing', total: 10000, soldUsed: 4500, unit: 'm', progress: 55, status: 'Optimal', statusColor: 'bg-emerald-50 text-dark-green border-emerald-100/50' },
-		{ id: '4', name: 'Pesticide (Organic)', category: 'Chemicals', icon: 'bug_report', total: 500, soldUsed: 460, unit: 'L', progress: 8, status: 'Warning', statusColor: 'bg-amber-50 text-amber-800 border-amber-100/50' },
-		{ id: '5', name: 'Soybean Seeds', category: 'Seeds', icon: 'eco', total: 8000, soldUsed: 1000, unit: 'kg', progress: 87.5, status: 'Optimal', statusColor: 'bg-emerald-50 text-dark-green border-emerald-100/50' }
-	]);
+	let { data } = $props();
+
+	let stockItems = $state([]);
+	$effect(() => {
+		stockItems = data.inventory || [];
+	});
 
 	// Reactive calculation for warning counts
 	let warningCount = $derived(stockItems.filter(i => i.status === 'Low' || i.status === 'Warning').length);
@@ -28,52 +27,79 @@
 	let showAddModal = $state(false);
 
 	// Form values for new inventory update
-	let updateName = $state('Premium Wheat Seed');
+	let updateName = $state('');
 	let updateAmount = $state('');
 	let updateType = $state('add'); // 'add' | 'remove'
 
-	function handleUpdateStock(event) {
+	let loading = $state(false);
+	let error = $state('');
+
+	// Set initial dropdown value when items load
+	$effect(() => {
+		if (stockItems.length > 0 && !updateName) {
+			updateName = stockItems[0].name;
+		}
+	});
+
+	async function handleUpdateStock(event) {
 		event.preventDefault();
 		const item = stockItems.find(i => i.name === updateName);
-		if (item) {
-			const quantity = Number(updateAmount);
-			if (updateType === 'add') {
-				item.total += quantity;
-			} else {
-				item.soldUsed = Math.min(item.total, item.soldUsed + quantity);
+		if (!item) return;
+
+		loading = true;
+		error = '';
+
+		try {
+			const res = await fetch('/api/inventory', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					action: 'update_quantity',
+					itemId: item.id,
+					amount: Number(updateAmount),
+					type: updateType
+				})
+			});
+
+			if (!res.ok) {
+				const data = await res.json();
+				throw new Error(data.error || 'Failed to update stock');
 			}
 
-			// Recompute progress & status
-			const available = item.total - item.soldUsed;
-			item.progress = Math.round((available / item.total) * 100);
-			if (item.progress <= 10) {
-				item.status = 'Low';
-				item.statusColor = 'bg-red-50 text-red-700 border-red-100/50';
-			} else if (item.progress <= 25) {
-				item.status = 'Warning';
-				item.statusColor = 'bg-amber-50 text-amber-800 border-amber-100/50';
-			} else {
-				item.status = 'Optimal';
-				item.statusColor = 'bg-emerald-50 text-dark-green border-emerald-100/50';
-			}
+			const updatedItem = await res.json();
+			stockItems = stockItems.map(i => i.id === updatedItem.id ? updatedItem : i);
+
+			// Reset form & close
+			updateAmount = '';
+			showAddModal = false;
+		} catch (err) {
+			error = err.message;
+		} finally {
+			loading = false;
 		}
-
-		// Reset form & close
-		updateAmount = '';
-		showAddModal = false;
 	}
 
-	function handleReplenish() {
-		// Automatically restock low items to show interactive response
-		stockItems.forEach(item => {
-			if (item.status === 'Low' || item.status === 'Warning') {
-				item.total += 2000;
-				item.progress = Math.round(((item.total - item.soldUsed) / item.total) * 100);
-				item.status = 'Optimal';
-				item.statusColor = 'bg-emerald-50 text-dark-green border-emerald-100/50';
+	async function handleReplenish() {
+		try {
+			const res = await fetch('/api/inventory', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					action: 'replenish'
+				})
+			});
+
+			if (!res.ok) {
+				const data = await res.json();
+				throw new Error(data.error || 'Failed to replenish');
 			}
-		});
-		alert('Low stock items have been replenished successfully!');
+
+			// Invalidate all to reload the data
+			await invalidateAll();
+			alert('Low stock items have been replenished successfully!');
+		} catch (err) {
+			alert(err.message);
+		}
 	}
 </script>
 
@@ -139,6 +165,12 @@
 							<input type="number" min="1" bind:value={updateAmount} required placeholder="Quantity" class="input-field w-full text-xs" />
 						</label>
 					</div>
+
+					{#if error}
+						<div class="rounded-2xl bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700 animate-fade-in">
+							⚠️ {error}
+						</div>
+					{/if}
 
 					<div class="flex gap-3 pt-3 border-t border-slate-100">
 						<button 
@@ -287,12 +319,12 @@
 									</div>
 								</td>
 								<td class="p-4 text-slate-400">{item.category}</td>
-								<td class="p-4 text-right text-slate-700">{item.total.toLocaleString()} {item.unit}</td>
-								<td class="p-4 text-right text-slate-400">{item.soldUsed.toLocaleString()} {item.unit}</td>
+								<td class="p-4 text-right text-slate-700">{(item.total || 0).toLocaleString()} {item.unit}</td>
+								<td class="p-4 text-right text-slate-400">{(item.soldUsed || 0).toLocaleString()} {item.unit}</td>
 								<td class="p-4 text-right">
 									<div class="flex flex-col items-end">
 										<span class={['font-bold', item.status === 'Low' ? 'text-red-500' : 'text-slate-800']}>
-											{(item.total - item.soldUsed).toLocaleString()} {item.unit}
+											{((item.total || 0) - (item.soldUsed || 0)).toLocaleString()} {item.unit}
 										</span>
 										<!-- Micro progress bar -->
 										<div class="w-16 bg-slate-100 rounded-full h-1 mt-1.5 overflow-hidden">

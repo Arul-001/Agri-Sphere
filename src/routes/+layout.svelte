@@ -7,7 +7,13 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { logout } from '$lib/firebase-data';
 
-	let { children } = $props();
+	let { children, data } = $props();
+
+	$effect(() => {
+		authState.user = data.user || null;
+		authState.profile = data.profile || null;
+		authState.loading = false;
+	});
 
 	let navItems = $derived.by(() => {
 		if (!authState.profile) {
@@ -30,17 +36,18 @@
 			return [
 				{ href: '/farmer/dashboard', label: 'Dashboard', icon: 'agriculture' },
 				{ href: '/farmer/crops', label: 'Crops', icon: 'psychology' },
+				{ href: '/farmer/harvests', label: 'Harvest Logs', icon: 'agriculture' },
 				{ href: '/farmer/expenses', label: 'Expenses', icon: 'payments' },
 				{ href: '/farmer/irrigation', label: 'Irrigation', icon: 'water_drop' },
 				{ href: '/farmer/inventory', label: 'Inventory', icon: 'inventory_2' },
 				{ href: '/farmer/disease', label: 'Disease Detection', icon: 'shutter_speed' },
-				{ href: '/buyer/dashboard', label: 'Marketplace', icon: 'storefront' }
+				{ href: '/farmer/products', label: 'My Listings', icon: 'storefront' }
 			];
 		}
 
-		// buyer
+		// customer
 		return [
-			{ href: '/buyer/dashboard', label: 'Dashboard', icon: 'dashboard' }
+			{ href: '/customer/dashboard', label: 'Dashboard', icon: 'dashboard' }
 		];
 	});
 
