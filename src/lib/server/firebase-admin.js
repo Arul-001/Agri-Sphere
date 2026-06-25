@@ -11,10 +11,8 @@ if (env.FIREBASE_SERVICE_ACCOUNT_KEY) {
 	const { getAuth } = await import('firebase-admin/auth');
 	const { getFirestore } = await import('firebase-admin/firestore');
 
-	let rawKey = env.FIREBASE_SERVICE_ACCOUNT_KEY;
-	if (rawKey.startsWith("'") && rawKey.endsWith("'")) {
-		rawKey = rawKey.slice(1, -1);
-	}
+	let rawKey = env.FIREBASE_SERVICE_ACCOUNT_KEY.trim();
+	rawKey = rawKey.replace(/^['"]|['"]$/g, '');
 	const serviceAccount = JSON.parse(rawKey);
 	if (serviceAccount.private_key) {
 		serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
