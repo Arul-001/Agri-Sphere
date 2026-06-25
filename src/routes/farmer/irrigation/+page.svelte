@@ -1,26 +1,28 @@
 <script>
 	import { fade, slide } from 'svelte/transition';
 
-	// Default scheduled runs mapping to the calendar
-	let scheduleRuns = $state([
-		{ id: '1', date: 3, zone: 'Zone 1: North Orchard', time: '05:00 - 06:30', colorClass: 'bg-emerald-50 text-dark-green border-emerald-100/50' },
-		{ id: '2', date: 7, zone: 'Zone 4: Vineyard', time: '04:30 - 05:30', colorClass: 'bg-emerald-50 text-dark-green border-emerald-100/50' },
-		{ id: '3', date: 7, zone: 'Fertigation Alpha', time: '06:00 - 07:00', colorClass: 'bg-amber-50 text-amber-800 border-amber-100/50' }
-	]);
+	let { data } = $props();
 
-	// Upcoming runs widget data
-	let upcomingRuns = $state([
-		{ id: 'u1', day: 14, zone: 'Zone 2: Berries', details: 'Starts in 4 hours • 45m' },
-		{ id: 'u2', day: 15, zone: 'Zone 3: Greenhouses', details: 'Tomorrow • 1h 20m' },
-		{ id: 'u3', day: 16, zone: 'General Maintenance', details: 'Wednesday • 2h' }
-	]);
+	let scheduleRuns = $state([]);
+	let upcomingRuns = $state([]);
+	let activities = $state([]);
 
-	// Recent activity data
-	let activities = $state([
-		{ id: 'a1', title: 'Zone 1 Completed', desc: 'Today, 06:30 AM • 92 gal used', icon: 'check', colorClass: 'bg-emerald-50 text-dark-green' },
-		{ id: 'a2', title: 'Sensor Calibrated', desc: 'Yesterday, 11:45 PM • Zone 4', icon: 'warning', colorClass: 'bg-amber-50 text-amber-600' },
-		{ id: 'a3', title: 'Schedule Updated', desc: 'Oct 12, 02:15 PM • By Admin', icon: 'edit', colorClass: 'bg-slate-100 text-slate-500' }
-	]);
+	// Manual override valves state
+	let valveStateZone1 = $state(false);
+	let valveStateZone2 = $state(false);
+	let valveStateZone3 = $state(false);
+
+	// Sync data on page load or update
+	$effect(() => {
+		scheduleRuns = data.scheduleRuns || [];
+		upcomingRuns = data.upcomingRuns || [];
+		activities = data.activities || [];
+		
+		// Set values without triggering the save effect
+		valveStateZone1 = !!data.valves?.zone1;
+		valveStateZone2 = !!data.valves?.zone2;
+		valveStateZone3 = !!data.valves?.zone3;
+	});
 
 	let activeTab = $state('schedule'); // 'schedule' | 'health' | 'manual'
 	let showAddModal = $state(false);
@@ -30,28 +32,68 @@
 	let newDate = $state(5);
 	let newTime = $state('05:00 - 06:00');
 
-	// Manual override state
-	let valveStateZone1 = $state(false);
-	let valveStateZone2 = $state(false);
-	let valveStateZone3 = $state(false);
+	let loading = $state(false);
+	let error = $state('');
 
-	function handleAddRun(event) {
+	async function handleAddRun(event) {
 		event.preventDefault();
-		scheduleRuns.push({
-			id: String(Date.now()),
-			date: Number(newDate),
-			zone: newZone,
-			time: newTime,
-			colorClass: newZone.includes('Fertigation') 
-				? 'bg-amber-50 text-amber-800 border-amber-100/50' 
-				: 'bg-emerald-50 text-dark-green border-emerald-100/50'
-		});
+		loading = true;
+		error = '';
 
-		// Clear form & close
-		newZone = 'Zone 1: North Orchard';
-		newDate = 5;
-		newTime = '05:00 - 06:00';
-		showAddModal = false;
+		try {
+			const res = await fetch('/api/irrigation', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					action: 'add_run',
+					payload: {
+						zone: newZone,
+						date: Number(newDate),
+						time: newTime
+					}
+				})
+			});
+
+			if (!res.ok) {
+				const data = await res.json();
+				throw new Error(data.error || 'Failed to add run');
+			}
+
+			const result = await res.json();
+			scheduleRuns = [...scheduleRuns, result.run];
+
+			// Clear form & close
+			newZone = 'Zone 1: North Orchard';
+			newDate = 5;
+			newTime = '05:00 - 06:00';
+			showAddModal = false;
+		} catch (err) {
+			error = err.message;
+		} finally {
+			loading = false;
+		}
+	}
+
+	// Save valves state whenever a toggle changes
+	async function saveValves() {
+		try {
+			await fetch('/api/irrigation', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					action: 'update_valves',
+					payload: {
+						valves: {
+							zone1: valveStateZone1,
+							zone2: valveStateZone2,
+							zone3: valveStateZone3
+						}
+					}
+				})
+			});
+		} catch (err) {
+			console.error('Error saving valves state:', err);
+		}
 	}
 
 	// Interactive calendar hover highlights
@@ -229,6 +271,8 @@
 							{@const cellRuns = scheduleRuns.filter(r => r.date === dateNumber)}
 							
 							<div 
+								role="gridcell"
+								tabindex="-1"
 								onmouseenter={() => hoveredCell = dateNumber}
 								onmouseleave={() => hoveredCell = null}
 								class={['min-h-[110px] p-3 border-r border-b border-slate-100 flex flex-col justify-between transition-colors relative cursor-pointer',
@@ -287,7 +331,7 @@
 									<p class="text-[10px] text-slate-400 mt-1 font-bold uppercase">Status: {valveStateZone1 ? 'Irrigating' : 'Idle'}</p>
 								</div>
 								<button 
-									onclick={() => valveStateZone1 = !valveStateZone1}
+									onclick={() => { valveStateZone1 = !valveStateZone1; saveValves(); }}
 									class={['px-5 py-2.5 rounded-xl font-bold text-xs shadow-sm transition-all',
 										valveStateZone1 ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-primary-green text-white hover:bg-dark-green']}
 								>
@@ -301,7 +345,7 @@
 									<p class="text-[10px] text-slate-400 mt-1 font-bold uppercase">Status: {valveStateZone2 ? 'Irrigating' : 'Idle'}</p>
 								</div>
 								<button 
-									onclick={() => valveStateZone2 = !valveStateZone2}
+									onclick={() => { valveStateZone2 = !valveStateZone2; saveValves(); }}
 									class={['px-5 py-2.5 rounded-xl font-bold text-xs shadow-sm transition-all',
 										valveStateZone2 ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-primary-green text-white hover:bg-dark-green']}
 								>
@@ -315,7 +359,7 @@
 									<p class="text-[10px] text-slate-400 mt-1 font-bold uppercase">Status: {valveStateZone3 ? 'Irrigating' : 'Idle'}</p>
 								</div>
 								<button 
-									onclick={() => valveStateZone3 = !valveStateZone3}
+									onclick={() => { valveStateZone3 = !valveStateZone3; saveValves(); }}
 									class={['px-5 py-2.5 rounded-xl font-bold text-xs shadow-sm transition-all',
 										valveStateZone3 ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-primary-green text-white hover:bg-dark-green']}
 								>

@@ -1,6 +1,6 @@
-export function load({ cookies }) {
+export function load({ locals }) {
 	return {
-		role: cookies.get('firebase_role') || '',
-		uid: cookies.get('firebase_uid') || ''
+		user: locals.user,
+		profile: locals.profile
 	};
 }

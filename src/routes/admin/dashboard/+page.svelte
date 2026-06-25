@@ -1,34 +1,21 @@
 <script>
-	import { subscribeTasks, subscribeUsers } from '$lib/firebase-data';
-	import { onMount } from 'svelte';
+	let { data } = $props();
 
-	let users = $state([]);
-	let tasks = $state([]);
+	let users = $derived(data.users || []);
+	let logs = $derived(data.logs || []);
 
 	let farmers = $derived(users.filter((user) => user.role === 'farmer'));
-	let buyers = $derived(users.filter((user) => user.role === 'buyer'));
+	let customers = $derived(users.filter((user) => user.role === 'customer' || user.role === 'buyer'));
 	let admins = $derived(users.filter((user) => user.role === 'admin'));
-	let counts = $derived({
-		todo: tasks.filter((task) => task.status === 'todo').length,
-		doing: tasks.filter((task) => task.status === 'doing').length,
-		done: tasks.filter((task) => task.status === 'done').length
-	});
-
-	onMount(() => {
-		const unsubscribeUsers = subscribeUsers((items) => {
-			users = items;
-		});
-
-		const unsubscribeTasks = subscribeTasks((items) => {
-			tasks = items;
-		});
-
-		return () => {
-			unsubscribeUsers();
-			unsubscribeTasks();
-		};
-	});
+	
+	// Verified and pending verification counts for farmers
+	let verifiedFarmers = $derived(farmers.filter((f) => f.verified === true).length);
+	let pendingFarmers = $derived(farmers.filter((f) => f.verified !== true).length);
 </script>
+
+<svelte:head>
+	<title>Admin Dashboard - AgriConnect</title>
+</svelte:head>
 
 <section class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
 	<div class="border-b border-emerald-100 pb-5">
@@ -50,8 +37,8 @@
 			<p class="mt-2 text-3xl font-extrabold text-slate-900">{farmers.length}</p>
 		</div>
 		<div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-			<p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Verified Buyers</p>
-			<p class="mt-2 text-3xl font-extrabold text-slate-900">{buyers.length}</p>
+			<p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Verified Customers</p>
+			<p class="mt-2 text-3xl font-extrabold text-slate-900">{customers.length}</p>
 		</div>
 		<div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
 			<p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Administrators</p>
@@ -59,36 +46,32 @@
 		</div>
 	</div>
 
-	<div class="mt-6 grid gap-4 sm:grid-cols-3">
+	<div class="mt-6 grid gap-4 sm:grid-cols-2">
 		<div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-			<p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Tasks Todo</p>
-			<p class="mt-2 text-3xl font-extrabold text-slate-900">{counts.todo}</p>
+			<p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Verified Farmers</p>
+			<p class="mt-2 text-3xl font-extrabold text-slate-900">{verifiedFarmers}</p>
 		</div>
 		<div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-			<p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Tasks In Progress</p>
-			<p class="mt-2 text-3xl font-extrabold text-slate-900">{counts.doing}</p>
-		</div>
-		<div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-			<p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Completed Tasks</p>
-			<p class="mt-2 text-3xl font-extrabold text-slate-900">{counts.done}</p>
+			<p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Pending Farmer Verifications</p>
+			<p class="mt-2 text-3xl font-extrabold text-red-600">{pendingFarmers}</p>
 		</div>
 	</div>
 
 	<div class="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-		<h2 class="text-xl font-bold text-slate-900 mb-4">Recent Task Assignments</h2>
+		<h2 class="text-xl font-bold text-slate-900 mb-4">Recent Activity Logs</h2>
 		<div class="divide-y divide-slate-100">
-			{#each tasks.slice(0, 5) as task (task.id)}
+			{#each logs as log (log.id)}
 				<div class="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">
 					<div>
-						<p class="font-semibold text-slate-800">{task.title}</p>
-						<p class="text-xs text-slate-500 mt-0.5">Assigned to: {task.userName} ({task.userEmail})</p>
+						<p class="font-semibold text-slate-800">{log.title}</p>
+						<p class="text-xs text-slate-500 mt-0.5">Actor: {log.userName} ({log.userEmail})</p>
 					</div>
 					<span class="w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase text-slate-600 border border-slate-200">
-						{task.status}
+						{log.status}
 					</span>
 				</div>
 			{:else}
-				<p class="py-6 text-center text-slate-500">No tasks created yet.</p>
+				<p class="py-6 text-center text-slate-500">No activity logs recorded yet.</p>
 			{/each}
 		</div>
 	</div>

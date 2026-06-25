@@ -1,8 +1,8 @@
 <script>
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { authState } from '$lib/auth.svelte.js';
-	import { roleHome, signUpWithEmail } from '$lib/firebase-data';
+	import { authState, registerUser } from '$lib/auth.svelte.js';
+	import { roleHome } from '$lib/firebase-data';
 
 	// Stepper state: 1, 2, 3
 	let currentStep = $state(1);
@@ -17,7 +17,7 @@
 	// Farmer specific fields
 	let farmName = $state('');
 	let farmArea = $state(''); // acres
-	let address = $state('');  // For both farmer and buyer
+	let address = $state('');  // For both farmer and customer
 
 	// Admin specific fields
 	let adminAccessCode = $state('');
@@ -25,8 +25,9 @@
 	let loading = $state(false);
 	let error = $state('');
 
-	// Extract selected role from URL query param (defaults to 'farmer')
-	let role = $derived(page.url.searchParams.get('role') || 'farmer');
+	// Extract selected role from URL query param (defaults to 'farmer', converts buyer to customer)
+	let roleParam = $derived(page.url.searchParams.get('role') || 'farmer');
+	let role = $derived(roleParam === 'buyer' ? 'customer' : roleParam);
 
 	$effect(() => {
 		if (!authState.loading && authState.profile) {
@@ -42,7 +43,7 @@
 		if (role === 'farmer') {
 			return farmName.trim().length > 0 && farmArea > 0 && address.trim().length > 0;
 		}
-		if (role === 'buyer') {
+		if (role === 'customer') {
 			return address.trim().length > 0;
 		}
 		if (role === 'admin') {
@@ -88,13 +89,13 @@
 				signupPayload.farmName = farmName;
 				signupPayload.farmArea = farmArea;
 				signupPayload.address = address;
-			} else if (role === 'buyer') {
+			} else if (role === 'customer') {
 				signupPayload.address = address;
 			} else if (role === 'admin') {
 				signupPayload.adminAccessCode = adminAccessCode;
 			}
 
-			await signUpWithEmail(signupPayload);
+			await registerUser(signupPayload);
 		} catch (err) {
 			error = err.message;
 		} finally {
@@ -104,7 +105,7 @@
 
 	const roleLabels = {
 		farmer: 'Farmer 🌱',
-		buyer: 'Buyer 🛒',
+		customer: 'Customer 🛒',
 		admin: 'Admin ⚙️'
 	};
 </script>
@@ -305,8 +306,8 @@
 						</label>
 					{/if}
 
-					<!-- Buyer Conditional Form -->
-					{#if role === 'buyer'}
+					<!-- Customer Conditional Form -->
+					{#if role === 'customer'}
 						<label class="block">
 							<span class="text-sm font-semibold text-slate-700">Delivery / Shipping Address</span>
 							<textarea
