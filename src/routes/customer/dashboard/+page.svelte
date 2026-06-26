@@ -321,6 +321,8 @@
 					{/each}
 				{:else}
 					{#each filteredProduce as crop (crop.id)}
+						<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+						<!-- svelte-ignore a11y_click_events_have_key_events -->
 						<article 
 							onclick={(e) => viewDetails(crop, e)}
 							class="bg-white rounded-2xl border border-slate-200/50 shadow-sm hover:shadow-lg hover:-translate-y-1.5 transition-all duration-300 overflow-hidden flex flex-col group cursor-pointer"
