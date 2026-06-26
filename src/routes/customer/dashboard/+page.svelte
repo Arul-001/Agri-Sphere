@@ -321,8 +321,11 @@
 					{/each}
 				{:else}
 					{#each filteredProduce as crop (crop.id)}
-						<article 
+						<div 
+							role="article"
+							tabindex="0"
 							onclick={(e) => viewDetails(crop, e)}
+							onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && viewDetails(crop, e)}
 							class="bg-white rounded-2xl border border-slate-200/50 shadow-sm hover:shadow-lg hover:-translate-y-1.5 transition-all duration-300 overflow-hidden flex flex-col group cursor-pointer"
 						>
 							<div class="h-40 w-full relative overflow-hidden flex-shrink-0">
@@ -395,7 +398,7 @@
 									View Details
 								</button>
 							</div>
-						</article>
+						</div>
 					{:else}
 						<!-- Empty State -->
 						<div class="col-span-full py-16 px-4 text-center bg-white border border-slate-200/50 rounded-2xl shadow-sm space-y-4">

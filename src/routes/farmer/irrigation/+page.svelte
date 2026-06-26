@@ -72,7 +72,7 @@
 	let dailyPrecipitation = $state({});
 
 	let locationSearchInput = $state(data.profile?.address || 'Napa Valley');
-	let activeWeatherAddress = $state(data.profile?.address || 'Napa Valley');
+	let activeWeatherAddress = $derived(data.profile?.address || locationSearchInput || 'Napa Valley');
 	let detectingLocation = $state(false);
 
 	let overrideRainProbability = $state(0);
@@ -778,6 +778,7 @@
 							role="gridcell"
 							tabindex="-1"
 							onclick={() => openAddModalForDate(dateNumber)}
+							onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && openAddModalForDate(dateNumber)}
 							onmouseenter={() => hoveredCell = dateNumber}
 							onmouseleave={() => hoveredCell = null}
 							class={['min-h-[110px] p-3 border-r border-b border-slate-100 flex flex-col justify-between transition-colors relative cursor-pointer group hover:bg-slate-50/50',
@@ -802,7 +803,7 @@
 											<span class="material-symbols-outlined text-[10px] text-sky-550 fill-1">
 												{didItRain ? 'umbrella' : 'rainy'}
 											</span>
-											{didItRain ? 'Rained' : `${rainChance}%`}
+											{didItRain ? 'Rained' : rainChance + '%'}
 										</span>
 									{/if}
 									<span class="material-symbols-outlined text-[14px] opacity-0 group-hover:opacity-100 text-slate-400 hover:text-primary-green transition-opacity">add</span>
