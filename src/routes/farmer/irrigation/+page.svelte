@@ -383,8 +383,9 @@
 							
 							<div 
 								role="gridcell"
-								tabindex="-1"
+								tabindex="0"
 								onclick={() => openAddModalForDate(dateNumber)}
+								onkeydown={(e) => e.key === 'Enter' && openAddModalForDate(dateNumber)}
 								onmouseenter={() => hoveredCell = dateNumber}
 								onmouseleave={() => hoveredCell = null}
 								class={['min-h-[110px] p-3 border-r border-b border-slate-100 flex flex-col justify-between transition-colors relative cursor-pointer group hover:bg-slate-50/50',
