@@ -13,7 +13,20 @@ if (env.FIREBASE_SERVICE_ACCOUNT_KEY) {
 
 	let rawKey = env.FIREBASE_SERVICE_ACCOUNT_KEY.trim();
 	rawKey = rawKey.replace(/^['"]|['"]$/g, '');
-	const serviceAccount = JSON.parse(rawKey);
+	
+	const firstBrace = rawKey.indexOf('{');
+	const lastBrace = rawKey.lastIndexOf('}');
+	if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+		rawKey = rawKey.substring(firstBrace, lastBrace + 1);
+	}
+	
+	let serviceAccount;
+	try {
+		serviceAccount = JSON.parse(rawKey);
+	} catch (err) {
+		console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY JSON:', err.message);
+		throw err;
+	}
 	if (serviceAccount.private_key) {
 		serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
 	}
