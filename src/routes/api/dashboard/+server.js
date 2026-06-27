@@ -12,122 +12,30 @@ export async function GET({ locals }) {
 
 	try {
 		if (role === 'farmer') {
-			// Query Farmer Crops
-			const cropsSnapshot = await adminDb.collection('crops')
-				.where('farmerId', '==', uid)
-				.get();
-			
+			// Query Farmer Crops, Expenses, Inventory, and Settings concurrently
+			const [cropsSnapshot, expensesSnapshot, inventorySnapshot, settingsDoc] = await Promise.all([
+				adminDb.collection('crops').where('farmerId', '==', uid).get(),
+				adminDb.collection('expenses').where('farmerId', '==', uid).get(),
+				adminDb.collection('inventory').where('farmerId', '==', uid).get(),
+				adminDb.collection('inventory_settings').doc(uid).get()
+			]);
+
 			let crops = cropsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-			// Auto-seed farmer crops if empty
-			if (crops.length === 0) {
-				const seedCrops = [
-					{
-						name: 'Sweet Corn',
-						location: 'Field Block A',
-						plantedDate: '2026-04-12',
-						harvestDuration: '90 Days',
-						acres: 50,
-						imageUrl: 'https://images.unsplash.com/photo-1551754655-cd27e38d20f6?auto=format&fit=crop&w=600&q=80',
-						farmerId: uid,
-						createdAt: new Date().toISOString()
-					},
-					{
-						name: 'Winter Wheat',
-						location: 'North Plateau',
-						plantedDate: '2025-10-05',
-						harvestDuration: '180 Days',
-						acres: 120,
-						imageUrl: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&w=600&q=80',
-						farmerId: uid,
-						createdAt: new Date().toISOString()
-					},
-					{
-						name: 'Organic Soybeans',
-						location: 'Valley Sector 3',
-						plantedDate: '2026-05-20',
-						harvestDuration: '120 Days',
-						acres: 75,
-						imageUrl: 'https://images.unsplash.com/photo-1599599810769-bcde5a160d32?auto=format&fit=crop&w=600&q=80',
-						farmerId: uid,
-						createdAt: new Date().toISOString()
-					}
-				];
-
-				for (const item of seedCrops) {
-					const docRef = await adminDb.collection('crops').add(item);
-					crops.push({ id: docRef.id, ...item });
-				}
-			}
-
-			// Query Farmer Expenses
-			const expensesSnapshot = await adminDb.collection('expenses')
-				.where('farmerId', '==', uid)
-				.get();
-			
 			let expenses = expensesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-			// Query Farmer Inventory
-			const inventorySnapshot = await adminDb.collection('inventory')
-				.where('farmerId', '==', uid)
-				.get();
-			
 			let inventory = inventorySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-			// Auto-seed inventory if empty
-			if (inventory.length === 0) {
-				const seedInventory = [
-					{
-						name: 'Premium Wheat Seeds',
-						total: 1200,
-						soldUsed: 0,
-						unit: 'Kg',
-						category: 'Seeds',
-						icon: 'grass',
-						progress: 100,
-						status: 'Optimal',
-						statusColor: 'bg-emerald-50 text-dark-green border-emerald-100/50',
-						farmerId: uid,
-						createdAt: new Date().toISOString()
-					},
-					{
-						name: 'NPK Nitrogen Fertilizer',
-						total: 850,
-						soldUsed: 0,
-						unit: 'Kg',
-						category: 'Fertilizers',
-						icon: 'compost',
-						progress: 100,
-						status: 'Optimal',
-						statusColor: 'bg-emerald-50 text-dark-green border-emerald-100/50',
-						farmerId: uid,
-						createdAt: new Date().toISOString()
-					},
-					{
-						name: 'Organic Pesticide Spray',
-						total: 400,
-						soldUsed: 0,
-						unit: 'Liters',
-						category: 'Chemicals',
-						icon: 'science',
-						progress: 100,
-						status: 'Optimal',
-						statusColor: 'bg-emerald-50 text-dark-green border-emerald-100/50',
-						farmerId: uid,
-						createdAt: new Date().toISOString()
-					}
-				];
-
-				for (const item of seedInventory) {
-					const docRef = await adminDb.collection('inventory').add(item);
-					inventory.push({ id: docRef.id, ...item });
-				}
+			let settings = { silo1: 0, silo2: 0, coldStorage: 0 };
+			if (settingsDoc.exists) {
+				settings = settingsDoc.data();
+			} else {
+				await adminDb.collection('inventory_settings').doc(uid).set(settings);
 			}
 
 			return json({
 				crops,
 				expenses,
 				inventory,
+				settings,
 				weather: {
 					temp: 32,
 					humidity: 45,

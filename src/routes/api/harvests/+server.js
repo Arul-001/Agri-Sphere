@@ -14,10 +14,12 @@ export async function GET({ locals }) {
 	try {
 		const snapshot = await adminDb.collection('harvests')
 			.where('farmerId', '==', locals.user.uid)
-			.orderBy('createdAt', 'desc')
 			.get();
 
 		let harvests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+		
+		// Sort client-side to avoid index requirement
+		harvests.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
 		// Seed initial harvest logs if empty
 		if (harvests.length === 0) {

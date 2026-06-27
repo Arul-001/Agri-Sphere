@@ -31,6 +31,9 @@
 
 	// Helper to find harvest details or crop details for dynamic lifespan calculation
 	function getLifespanDetails(itemName) {
+		if (!itemName || typeof itemName !== 'string') {
+			return null;
+		}
 		const cleanName = itemName.replace(/\s+Harvest$/i, '').trim().toLowerCase();
 		
 		// 1. Look in harvests
@@ -119,6 +122,7 @@
 				throw new Error(d.error || 'Failed to update storage levels');
 			}
 			editStorageMode = false;
+			await invalidateAll();
 		} catch (err) {
 			error = err.message;
 		} finally {
@@ -145,6 +149,38 @@
 			stockItems = stockItems.map(item => item.id === itemId ? { ...item, unit } : item);
 		} catch (err) {
 			alert(err.message);
+		}
+	}
+
+	// Change Stock levels inline dynamically
+	async function changeStockLevel(itemId, total, soldUsed) {
+		try {
+			const res = await fetch('/api/inventory', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					action: 'update_stock',
+					itemId,
+					total: total !== undefined ? Number(total) : undefined,
+					soldUsed: soldUsed !== undefined ? Number(soldUsed) : undefined
+				})
+			});
+			if (!res.ok) {
+				const d = await res.json();
+				throw new Error(d.error || 'Failed to update stock');
+			}
+			stockItems = stockItems.map(item => {
+				if (item.id === itemId) {
+					const updated = { ...item };
+					if (total !== undefined) updated.total = Number(total);
+					if (soldUsed !== undefined) updated.soldUsed = Number(soldUsed);
+					return updated;
+				}
+				return item;
+			});
+			await invalidateAll();
+		} catch (err) {
+			console.error(err.message);
 		}
 	}
 </script>
@@ -272,17 +308,17 @@
 
 				<!-- Responsive Table -->
 				<div class="overflow-x-auto">
-					<table class="w-full text-left border-collapse text-xs">
+					<table class="w-full text-left border-collapse text-xs table-fixed min-w-[760px]">
 						<thead>
-							<tr class="bg-slate-50/50 font-bold uppercase tracking-wider text-[10px] text-slate-400 border-b border-slate-100">
-								<th class="p-4 pl-6">Product Name</th>
-								<th class="p-4">Category</th>
-								<th class="p-4 text-right">Stock Level</th>
-								<th class="p-4 text-right">Sold/Used</th>
-								<th class="p-4 text-right">Available Stock</th>
-								<th class="p-4 text-center">Unit</th>
-								<th class="p-4 text-center">Remaining Lifespan</th>
-								<th class="p-4 pr-6 text-center">Status</th>
+							<tr class="bg-slate-50/50 font-bold uppercase tracking-wider text-[9px] text-slate-400 border-b border-slate-100">
+								<th class="p-4 pl-6 w-[18%]">Product Name</th>
+								<th class="p-4 w-[12%]">Category</th>
+								<th class="p-4 text-center w-[12%]">Stock Level</th>
+								<th class="p-4 text-center w-[12%]">Sold/Used</th>
+								<th class="p-4 text-center w-[13%]">Available Stock</th>
+								<th class="p-4 text-center w-[11%]">Unit</th>
+								<th class="p-4 text-center w-[12%]">Remaining Lifespan</th>
+								<th class="p-4 pr-6 text-center w-[10%]">Status</th>
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-slate-50 font-medium text-slate-600">
@@ -291,13 +327,29 @@
 								{@const daysLeft = calculateRemainingLifespan(item.name)}
 								<tr class="hover:bg-slate-50/30 transition-colors">
 									<td class="p-4 pl-6">
-										<span class="font-bold text-slate-800">{item.name}</span>
+										<span class="font-bold text-slate-800 break-words line-clamp-2 block leading-snug">{item.name}</span>
 									</td>
-									<td class="p-4 text-slate-400">{item.category}</td>
-									<td class="p-4 text-right text-slate-700">{(item.total || 0).toLocaleString()}</td>
-									<td class="p-4 text-right text-slate-400">{(item.soldUsed || 0).toLocaleString()}</td>
-									<td class="p-4 text-right">
-										<span class="font-extrabold text-slate-800">
+									<td class="p-4 text-slate-400 capitalize">{item.category}</td>
+									<td class="p-4 text-center">
+										<input 
+											type="number" 
+											min="0"
+											value={item.total || 0}
+											onchange={(e) => changeStockLevel(item.id, e.target.value, undefined)}
+											class="w-16 border border-slate-200 rounded px-1 py-0.5 text-center font-bold text-xs focus:outline-none focus:border-primary-green focus:bg-white"
+										/>
+									</td>
+									<td class="p-4 text-center">
+										<input 
+											type="number" 
+											min="0"
+											value={item.soldUsed || 0}
+											onchange={(e) => changeStockLevel(item.id, undefined, e.target.value)}
+											class="w-16 border border-slate-200 rounded px-1 py-0.5 text-center font-bold text-xs focus:outline-none focus:border-primary-green focus:bg-white"
+										/>
+									</td>
+									<td class="p-4 text-center">
+										<span class="font-black text-slate-800">
 											{((item.total || 0) - (item.soldUsed || 0)).toLocaleString()}
 										</span>
 									</td>

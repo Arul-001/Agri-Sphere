@@ -23,7 +23,7 @@ export async function GET({ locals }) {
 			.doc(locals.user.uid)
 			.get();
 
-		let settings = { silo1: 45, silo2: 30, coldStorage: 60 };
+		let settings = { silo1: 0, silo2: 0, coldStorage: 0 };
 		if (settingsDoc.exists) {
 			settings = settingsDoc.data();
 		} else {
@@ -84,6 +84,29 @@ export async function POST({ request, locals }) {
 
 			await docRef.update({ unit });
 			return json({ success: true, itemId, unit });
+		}
+
+		if (action === 'update_stock') {
+			const { itemId, total, soldUsed } = body;
+			if (!itemId) {
+				return json({ error: 'Item ID is required' }, { status: 400 });
+			}
+
+			const docRef = adminDb.collection('inventory').doc(itemId);
+			const docSnap = await docRef.get();
+			if (!docSnap.exists) {
+				return json({ error: 'Item not found' }, { status: 404 });
+			}
+			if (docSnap.data().farmerId !== locals.user.uid) {
+				return json({ error: 'Forbidden' }, { status: 403 });
+			}
+
+			const updateObj = {};
+			if (total !== undefined) updateObj.total = Number(total);
+			if (soldUsed !== undefined) updateObj.soldUsed = Number(soldUsed);
+
+			await docRef.update(updateObj);
+			return json({ success: true, itemId, ...updateObj });
 		}
 
 		return json({ error: 'Invalid action' }, { status: 400 });
