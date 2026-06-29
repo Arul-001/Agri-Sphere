@@ -1132,11 +1132,16 @@
 					<p class="font-bold text-slate-500">Comparison list is empty.</p>
 					<p class="text-xs text-slate-400 mt-1">Select items in the browse produce grid to add them to comparison view.</p>
 					<button onclick={() => activeTab = 'marketplace'} class="mt-3 btn-primary text-xs px-4 py-2 cursor-pointer">Go to Browse</button>
-					<!-- View Details Modal (Extended with Favorite Farmer toggle) -->
+				</div>
+			{/if}
+		</div>
+	{/if}
+
+	<!-- View Details Modal (Extended with Favorite Farmer toggle) -->
 	<Modal bind:show={showProductModal} size="xl" title="Product Specification" type="custom">
 		{#if selectedProduct}
 			{@const isFarmerFavorited = favoriteFarmerIds.includes(selectedProduct.farmerId)}
-			<div class="space-y-4">-4 max-h-[75vh] overflow-y-auto pr-1">
+			<div class="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
 					
 					<!-- View 1: Details -->
 					{#if currentModalView === 'details'}
@@ -1441,8 +1446,8 @@
 
 				</div>
 			</div>
-		</div>
 	{/if}
+</Modal>
 
 </section>
 
