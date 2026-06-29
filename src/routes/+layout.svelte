@@ -255,7 +255,7 @@
 			</header>
 
 			<!-- Content section -->
-			<main class="p-6 md:p-10 flex-1 animate-fade-in">
+			<main class="p-6 md:p-10 flex-1">
 				{#if $navigating}
 					{@const targetPath = $navigating.to?.url?.pathname || ''}
 					{#if targetPath.includes('/farmer/crops')}
@@ -774,7 +774,7 @@
 				</div>
 			</header>
 
-			<main class="flex-grow flex flex-col justify-center animate-fade-in">
+			<main class="flex-grow flex flex-col justify-center">
 				{@render children()}
 			</main>
 		</div>

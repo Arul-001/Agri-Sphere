@@ -1,6 +1,6 @@
 <script>
 	import { fade, scale } from 'svelte/transition';
-	import { onMount, onDestroy, tick } from 'svelte';
+	import { onDestroy, tick } from 'svelte';
 	import { browser } from '$app/environment';
 
 	// Svelte 5 component props
@@ -14,6 +14,8 @@
 		onConfirm = null,
 		onCancel = null,
 		closeOnOutsideClick = true,
+		onSubmit = null, // dynamic form submit support
+		footer = null, // custom footer snippet support
 		children = null
 	} = $props();
 
@@ -26,22 +28,6 @@
 		lg: 'max-w-lg',
 		xl: 'max-w-2xl'
 	};
-
-	// Prevent background scroll
-	$effect(() => {
-		if (!browser) return;
-		if (show) {
-			document.body.classList.add('overflow-hidden');
-		} else {
-			document.body.classList.remove('overflow-hidden');
-		}
-	});
-
-	onDestroy(() => {
-		if (browser) {
-			document.body.classList.remove('overflow-hidden');
-		}
-	});
 
 	// ESC Key listener
 	function handleKeyDown(event) {
@@ -82,27 +68,30 @@
 <svelte:window onkeydown={handleKeyDown} />
 
 {#if show}
-	<!-- Overlay Backdrop -->
+	<!-- Overlay Backdrop (centers content, fixed so it scrolls background) -->
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
 		transition:fade={{ duration: 150 }}
 		onclick={handleOutsideClick}
-		class="fixed inset-0 bg-[#022c22]/20 backdrop-blur-[6px] flex items-center justify-center z-[100] p-4 overflow-y-auto"
+		class="fixed top-0 left-0 w-screen h-screen bg-[#022c22]/15 backdrop-blur-[6px] flex items-center justify-center z-[100] p-4"
 		role="dialog"
 		aria-modal="true"
+		tabindex="-1"
 	>
-		<!-- Modal Content Card Container -->
-		<div
+		<!-- Modal Content Card Container (Glassmorphic design) -->
+		<svelte:element
+			this={onSubmit ? 'form' : 'div'}
+			onsubmit={onSubmit}
 			bind:this={modalElement}
 			transition:scale={{ start: 0.95, duration: 180 }}
 			class={[
-				'w-full bg-white/75 backdrop-blur-xl border border-white/40 shadow-2xl rounded-3xl overflow-hidden flex flex-col font-sans relative',
+				'w-full max-h-[90vh] bg-white/75 backdrop-blur-xl border border-slate-200/60 shadow-2xl rounded-3xl overflow-hidden flex flex-col font-sans relative',
 				sizeClasses[size] || sizeClasses.md
 			].join(' ')}
 		>
-			<!-- Header Block -->
-			<div class="flex justify-between items-center px-6 py-4 border-b border-emerald-100/30">
+			<!-- Header Block (always visible, glassmorphic header) -->
+			<div class="flex justify-between items-center px-6 py-4 border-b border-emerald-100/30 flex-shrink-0 bg-white/50">
 				<h3 class="font-extrabold text-slate-800 text-base flex items-center gap-2">
 					{#if type === 'success'}
 						<span class="material-symbols-outlined text-emerald-600 font-bold text-lg leading-none">check_circle</span>
@@ -119,8 +108,9 @@
 				</h3>
 				{#if type !== 'confirm'}
 					<button
+						type="button"
 						onclick={handleClose}
-						class="text-slate-400 hover:text-slate-650 transition-all p-1.5 rounded-full hover:bg-white/40 flex items-center cursor-pointer active:scale-95"
+						class="text-slate-400 hover:text-slate-650 transition-all p-1.5 rounded-full hover:bg-slate-100/60 flex items-center cursor-pointer active:scale-95"
 						aria-label="Close modal"
 					>
 						<span class="material-symbols-outlined text-lg leading-none">close</span>
@@ -128,8 +118,8 @@
 				{/if}
 			</div>
 
-			<!-- Body Block -->
-			<div class="px-6 py-5 overflow-y-auto max-h-[75vh] pr-4 space-y-4">
+			<!-- Body Block (scrollable, flex-grow) -->
+			<div class="px-6 py-5 overflow-y-auto flex-grow space-y-4">
 				{#if children}
 					<!-- Render Slot/Snippets -->
 					{@render children()}
@@ -141,27 +131,33 @@
 				{/if}
 			</div>
 
-			<!-- Footer Block (Optional buttons for standard alerts/confirmations) -->
-			{#if type !== 'custom'}
-				<div class="px-6 py-4 border-t border-emerald-100/30 flex gap-3 justify-end">
-					{#if type === 'confirm'}
-						<button
-							type="button"
-							onclick={handleClose}
-							class="px-4 py-2 text-xs font-bold text-slate-600 bg-white/40 border border-slate-200/50 rounded-xl hover:bg-slate-100/50 hover:text-slate-900 transition-all active:scale-95 cursor-pointer"
-						>
-							{cancelText}
-						</button>
-					{/if}
-					<button
-						type="button"
-						onclick={onConfirm || handleClose}
-						class="px-5 py-2 text-xs font-bold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-600/10 transition-all active:scale-95 cursor-pointer"
-					>
-						{confirmText}
-					</button>
+			<!-- Footer Block (always visible, glassmorphic footer) -->
+			{#if footer}
+				<div class="px-6 py-4 border-t border-emerald-100/30 flex gap-3 justify-end flex-shrink-0 bg-slate-50/50">
+					{@render footer()}
 				</div>
+			{:else}
+				{#if type !== 'custom'}
+					<div class="px-6 py-4 border-t border-emerald-100/30 flex gap-3 justify-end flex-shrink-0 bg-slate-50/50">
+						{#if type === 'confirm'}
+							<button
+								type="button"
+								onclick={handleClose}
+								class="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition-all active:scale-95 cursor-pointer"
+							>
+								{cancelText}
+							</button>
+						{/if}
+						<button
+							type={onSubmit ? 'submit' : 'button'}
+							onclick={onSubmit ? null : (onConfirm || handleClose)}
+							class="px-5 py-2 text-xs font-bold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-600/10 transition-all active:scale-95 cursor-pointer"
+						>
+							{confirmText}
+						</button>
+					</div>
+				{/if}
 			{/if}
-		</div>
+		</svelte:element>
 	</div>
 {/if}

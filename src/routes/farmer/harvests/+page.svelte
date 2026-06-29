@@ -1,5 +1,6 @@
 <script>
 	import { fade, slide } from 'svelte/transition';
+	import Modal from '$lib/components/Modal.svelte';
 
 	let { data } = $props();
 
@@ -371,281 +372,212 @@
 	</div>
 
 	<!-- ── Add / Edit Modal ────────────────────────────────────────────────── -->
-	{#if showFormModal}
-		<div
-			transition:fade={{ duration: 150 }}
-			class="fixed inset-0 bg-slate-950/30 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-			role="dialog"
-			aria-modal="true"
-			aria-label={formMode === 'add' ? 'Log New Harvest' : 'Edit Harvest Log'}
-		>
-			<div
-				transition:slide={{ duration: 200 }}
-				class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg overflow-hidden"
-			>
-				<!-- Modal Header -->
-				<div class="flex justify-between items-center px-6 py-4 border-b border-slate-100">
-					<div>
-						<h3 class="font-extrabold text-slate-800 text-base">
-							{formMode === 'add' ? 'New Harvest Log' : 'Edit Harvest Log'}
-						</h3>
-						<p class="text-[11px] text-slate-400 mt-0.5">
-							{formMode === 'add' ? 'Fill in the details to record a new harvest.' : 'Update the harvest log details below.'}
-						</p>
-					</div>
-					<button
-						onclick={closeFormModal}
-						class="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-lg transition-colors"
-						aria-label="Close modal"
-					>
-						<span class="material-symbols-outlined text-lg">close</span>
-					</button>
-				</div>
-
-				<!-- Modal Body / Form -->
-				<form
-					onsubmit={formMode === 'add' ? handleAddHarvest : handleUpdateHarvest}
-					class="px-6 py-5 space-y-4 text-xs font-semibold text-slate-700 max-h-[80vh] overflow-y-auto"
+	<Modal 
+		bind:show={showFormModal} 
+		size="lg" 
+		title={formMode === 'add' ? 'New Harvest Log' : 'Edit Harvest Log'} 
+		onSubmit={formMode === 'add' ? handleAddHarvest : handleUpdateHarvest}
+	>
+		<div class="space-y-4 text-xs font-semibold text-slate-700">
+			<!-- ── Crop Selection ────────────────────────────────── -->
+			<div>
+				<label for="harvest-crop" class="block mb-1.5 text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">
+					Crop <span class="text-red-500">*</span>
+				</label>
+				<select
+					id="harvest-crop"
+					bind:value={selectedCropId}
+					onchange={onCropChange}
+					required={!showNewCropForm}
+					class="input-field w-full text-xs bg-white py-[9.5px]"
 				>
-					<!-- ── Crop Selection ────────────────────────────────── -->
-					<div>
-						<label for="harvest-crop" class="block mb-1.5 font-bold text-slate-700">
-							Crop <span class="text-red-500">*</span>
-						</label>
-						<select
-							id="harvest-crop"
-							bind:value={selectedCropId}
-							onchange={onCropChange}
-							required={!showNewCropForm}
-							class="input-field w-full text-xs bg-white py-[9.5px]"
-						>
-							<option value="" disabled>— Select a crop —</option>
-							{#each crops as crop (crop.id)}
-								<option value={crop.id}>{crop.name}</option>
-							{/each}
-							<option value="__new__">➕ Add new crop…</option>
-						</select>
-					</div>
+					<option value="" disabled>— Select a crop —</option>
+					{#each crops as crop (crop.id)}
+						<option value={crop.id}>{crop.name}</option>
+					{/each}
+					<option value="__new__">➕ Add new crop…</option>
+				</select>
+			</div>
 
-					<!-- ── Inline New Crop Form ───────────────────────────── -->
-					{#if showNewCropForm}
-						<div
-							transition:slide={{ duration: 150 }}
-							class="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-3"
-						>
-							<p class="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5">
-								<span class="material-symbols-outlined text-[14px]">eco</span>
-								Register new crop
-							</p>
-							<div class="grid grid-cols-2 gap-3">
-								<label class="block col-span-2">
-									<span class="block mb-1 text-slate-600">Crop Name <span class="text-red-500">*</span></span>
-									<input
-										type="text"
-										bind:value={newCropName}
-										placeholder="e.g. Dragon Fruit"
-										class="input-field w-full text-xs"
-									/>
-								</label>
-								<label class="block col-span-2">
-									<span class="block mb-1 text-slate-600">Lifespan <span class="text-red-500">*</span></span>
-									<input
-										type="text"
-										bind:value={newCropLifespan}
-										placeholder="e.g. 90 Days or Seasonal (Jun, Jul)"
-										class="input-field w-full text-xs"
-										oninput={() => lifespan = newCropLifespan}
-									/>
-									<span class="text-[10px] text-slate-400 mt-1 block">Will be saved to Crops module automatically.</span>
-								</label>
-							</div>
-						</div>
-					{/if}
-
-					<!-- ── Lifespan (always editable — auto-filled as a starting point) ──── -->
-					<div>
-						<label for="harvest-lifespan" class="block mb-1.5 font-bold text-slate-700">
-							Lifespan
-							{#if selectedCropId && selectedCropId !== '__new__'}
-								<span class="ml-1 text-[10px] font-normal text-slate-400">(auto-filled · editable)</span>
-							{/if}
-						</label>
-						<input
-							id="harvest-lifespan"
-							type="text"
-							bind:value={lifespan}
-							placeholder="e.g. 90 Days or Seasonal (Jun, Jul)"
-							class="input-field w-full text-xs"
-						/>
-					</div>
-
-					<!-- ── Quantity + Unit ───────────────────────────────── -->
-					<div class="grid grid-cols-2 gap-4">
-						<div>
-							<label for="harvest-qty" class="block mb-1.5 font-bold text-slate-700">
-								Quantity <span class="text-red-500">*</span>
-							</label>
+			<!-- ── Inline New Crop Form ───────────────────────────── -->
+			{#if showNewCropForm}
+				<div
+					transition:slide={{ duration: 150 }}
+					class="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-3"
+				>
+					<p class="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5">
+						<span class="material-symbols-outlined text-[14px]">eco</span>
+						Register new crop
+					</p>
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+						<label class="block col-span-2 md:col-span-1">
+							<span class="block mb-1.5 text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Crop Name <span class="text-red-500">*</span></span>
 							<input
-								id="harvest-qty"
-								type="number"
-								bind:value={quantity}
-								min="0.01"
-								step="any"
-								required
-								placeholder="e.g. 120"
+								type="text"
+								bind:value={newCropName}
+								placeholder="e.g. Dragon Fruit"
 								class="input-field w-full text-xs"
 							/>
-						</div>
-						<div>
-							<label for="harvest-unit" class="block mb-1.5 font-bold text-slate-700">Unit</label>
-							<select
-								id="harvest-unit"
-								bind:value={unit}
-								class="input-field w-full text-xs bg-white py-[9.5px]"
-							>
-								<option value="Liters">Liters</option>
-								<option value="Tons">Tons</option>
-								<option value="kg">kg</option>
-								<option value="Bags">Bags</option>
-								<option value="Units">Units</option>
-							</select>
-						</div>
-					</div>
-
-					<!-- ── Harvest Date + Quality Grade ─────────────────── -->
-					<div class="grid grid-cols-2 gap-4">
-						<div>
-							<label for="harvest-date" class="block mb-1.5 font-bold text-slate-700">
-								Harvest Date <span class="text-red-500">*</span>
-							</label>
+						</label>
+						<label class="block col-span-2 md:col-span-1">
+							<span class="block mb-1.5 text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Lifespan <span class="text-red-500">*</span></span>
 							<input
-								id="harvest-date"
-								type="date"
-								bind:value={harvestDate}
-								required
-								class="input-field w-full text-xs bg-white"
+								type="text"
+								bind:value={newCropLifespan}
+								placeholder="e.g. 90 Days or Seasonal (Jun, Jul)"
+								class="input-field w-full text-xs"
+								oninput={() => lifespan = newCropLifespan}
 							/>
-						</div>
-						<div>
-							<label for="harvest-grade" class="block mb-1.5 font-bold text-slate-700">Quality Grade</label>
-							<select
-								id="harvest-grade"
-								bind:value={qualityGrade}
-								class="input-field w-full text-xs bg-white py-[9.5px]"
-							>
-								<option value="Grade A+">Grade A+</option>
-								<option value="Grade A">Grade A</option>
-								<option value="Grade B">Grade B</option>
-								<option value="Grade C">Grade C</option>
-								<option value="Mixed">Mixed</option>
-							</select>
-						</div>
+						</label>
+						<span class="text-[10px] text-slate-400 mt-1 block col-span-2">Will be saved to Crops module automatically.</span>
 					</div>
+				</div>
+			{/if}
 
-					<!-- ── Notes ─────────────────────────────────────────── -->
-					<div>
-						<label for="harvest-notes" class="block mb-1.5 font-bold text-slate-700">Notes</label>
-						<textarea
-							id="harvest-notes"
-							bind:value={notes}
-							rows="3"
-							placeholder="Any additional details about this harvest…"
-							class="input-field w-full text-xs resize-none"
-						></textarea>
-					</div>
-
-					<!-- ── Error Banner ───────────────────────────────────── -->
-					{#if error}
-						<div
-							transition:slide={{ duration: 150 }}
-							class="rounded-2xl bg-red-50 border border-red-200 px-4 py-2.5 text-xs text-red-700 flex items-start gap-2 animate-fade-in"
-						>
-							<span class="material-symbols-outlined text-[15px] shrink-0 mt-0.5">warning</span>
-							<span>{error}</span>
-						</div>
+			<!-- ── Lifespan (always editable — auto-filled as a starting point) ──── -->
+			<div>
+				<label for="harvest-lifespan" class="block mb-1.5 text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">
+					Lifespan
+					{#if selectedCropId && selectedCropId !== '__new__'}
+						<span class="ml-1 text-[9px] font-normal text-slate-405 lowercase">(auto-filled · editable)</span>
 					{/if}
-
-					<!-- ── Form Actions ───────────────────────────────────── -->
-					<div class="flex gap-3 pt-2 border-t border-slate-100">
-						<button
-							type="button"
-							onclick={closeFormModal}
-							class="btn-secondary flex-1 py-3 text-xs"
-						>
-							Cancel
-						</button>
-						<button
-							type="submit"
-							disabled={loading}
-							class="btn-primary flex-1 py-3 text-xs flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
-						>
-							{#if loading}
-								<span class="material-symbols-outlined text-[15px] animate-spin">progress_activity</span>
-								{formMode === 'add' ? 'Saving…' : 'Updating…'}
-							{:else}
-								<span class="material-symbols-outlined text-[15px]">{formMode === 'add' ? 'add_circle' : 'check_circle'}</span>
-								{formMode === 'add' ? 'Submit Log' : 'Save Changes'}
-							{/if}
-						</button>
-					</div>
-				</form>
+				</label>
+				<input
+					id="harvest-lifespan"
+					type="text"
+					bind:value={lifespan}
+					placeholder="e.g. 90 Days or Seasonal (Jun, Jul)"
+					class="input-field w-full text-xs"
+				/>
 			</div>
+
+			<!-- ── Quantity + Unit ───────────────────────────────── -->
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+				<div>
+					<label for="harvest-qty" class="block mb-1.5 text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">
+						Quantity <span class="text-red-500">*</span>
+					</label>
+					<input
+						id="harvest-qty"
+						type="number"
+						bind:value={quantity}
+						min="0.01"
+						step="any"
+						required
+						placeholder="e.g. 120"
+						class="input-field w-full text-xs"
+					/>
+				</div>
+				<div>
+					<label for="harvest-unit" class="block mb-1.5 text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Unit</label>
+					<select
+						id="harvest-unit"
+						bind:value={unit}
+						class="input-field w-full text-xs bg-white py-[9.5px]"
+					>
+						<option value="Liters">Liters</option>
+						<option value="Tons">Tons</option>
+						<option value="kg">kg</option>
+						<option value="Bags">Bags</option>
+						<option value="Units">Units</option>
+					</select>
+				</div>
+			</div>
+
+			<!-- ── Harvest Date + Quality Grade ─────────────────── -->
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+				<div>
+					<label for="harvest-date" class="block mb-1.5 text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">
+						Harvest Date <span class="text-red-500">*</span>
+					</label>
+					<input
+						id="harvest-date"
+						type="date"
+						bind:value={harvestDate}
+						required
+						class="input-field w-full text-xs bg-white py-[7.5px]"
+					/>
+				</div>
+				<div>
+					<label for="harvest-grade" class="block mb-1.5 text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Quality Grade</label>
+					<select
+						id="harvest-grade"
+						bind:value={qualityGrade}
+						class="input-field w-full text-xs bg-white py-[9.5px]"
+					>
+						<option value="Grade A+">Grade A+</option>
+						<option value="Grade A">Grade A</option>
+						<option value="Grade B">Grade B</option>
+						<option value="Grade C">Grade C</option>
+						<option value="Mixed">Mixed</option>
+					</select>
+				</div>
+			</div>
+
+			<!-- ── Notes ─────────────────────────────────────────── -->
+			<div>
+				<label for="harvest-notes" class="block mb-1.5 text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Notes</label>
+				<textarea
+					id="harvest-notes"
+					bind:value={notes}
+					rows="3"
+					placeholder="Any additional details about this harvest…"
+					class="input-field w-full text-xs resize-none"
+				></textarea>
+			</div>
+
+			<!-- ── Error Banner ───────────────────────────────────── -->
+			{#if error}
+				<div
+					transition:slide={{ duration: 150 }}
+					class="rounded-2xl bg-red-50 border border-red-200 px-4 py-2.5 text-xs text-red-700 flex items-start gap-2 animate-fade-in"
+				>
+					<span class="material-symbols-outlined text-[15px] shrink-0 mt-0.5">warning</span>
+					<span>{error}</span>
+				</div>
+			{/if}
 		</div>
-	{/if}
+
+		{#snippet footer()}
+			<button
+				type="button"
+				onclick={closeFormModal}
+				class="btn-secondary flex-1 py-3 text-xs cursor-pointer"
+			>
+				Cancel
+			</button>
+			<button
+				type="submit"
+				disabled={loading}
+				class="btn-primary flex-1 py-3 text-xs flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+			>
+				{#if loading}
+					<span class="material-symbols-outlined text-[15px] animate-spin">progress_activity</span>
+					{formMode === 'add' ? 'Saving…' : 'Updating…'}
+				{:else}
+					<span class="material-symbols-outlined text-[15px]">{formMode === 'add' ? 'add_circle' : 'check_circle'}</span>
+					{formMode === 'add' ? 'Submit Log' : 'Save Changes'}
+				{/if}
+			</button>
+		{/snippet}
+	</Modal>
 
 	<!-- ── Delete Confirmation Dialog ─────────────────────────────────────── -->
-	{#if showDeleteDialog}
-		<div
-			transition:fade={{ duration: 150 }}
-			class="fixed inset-0 bg-slate-950/30 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-			role="alertdialog"
-			aria-modal="true"
-			aria-label="Confirm harvest deletion"
-		>
-			<div
-				transition:slide={{ duration: 200 }}
-				class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-sm p-6 space-y-4"
-			>
-				<div class="flex items-start gap-4">
-					<div class="size-11 rounded-2xl bg-red-50 flex items-center justify-center shrink-0">
-						<span class="material-symbols-outlined text-red-600 text-xl">delete_forever</span>
-					</div>
-					<div>
-						<h3 class="font-extrabold text-slate-800 text-sm">Delete Harvest Log?</h3>
-						<p class="text-xs text-slate-500 mt-1 leading-relaxed">
-							This will permanently delete the harvest log for
-							<strong class="text-slate-700">{harvestToDelete?.cropName}</strong>
-							({harvestToDelete?.harvestDate}) and remove the linked inventory record.
-						</p>
-					</div>
-				</div>
-				<div class="flex gap-3">
-					<button
-						type="button"
-						onclick={closeDeleteDialog}
-						class="btn-secondary flex-1 py-2.5 text-xs"
-						disabled={deleteLoading}
-					>
-						Cancel
-					</button>
-					<button
-						type="button"
-						onclick={handleDeleteHarvest}
-						disabled={deleteLoading}
-						class="flex-1 py-2.5 text-xs font-bold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
-					>
-						{#if deleteLoading}
-							<span class="material-symbols-outlined text-[15px] animate-spin">progress_activity</span>
-							Deleting…
-						{:else}
-							<span class="material-symbols-outlined text-[15px]">delete</span>
-							Delete Log
-						{/if}
-					</button>
-				</div>
-			</div>
-		</div>
-	{/if}
+	<Modal
+		bind:show={showDeleteDialog}
+		type="confirm"
+		title="Delete Harvest Log?"
+		confirmText="Delete Log"
+		cancelText="Cancel"
+		onConfirm={handleDeleteHarvest}
+		onCancel={closeDeleteDialog}
+	>
+		<p class="text-xs font-semibold text-slate-550 leading-relaxed">
+			This will permanently delete the harvest log for
+			<strong class="text-slate-700">{harvestToDelete?.cropName}</strong>
+			({harvestToDelete?.harvestDate}) and remove the linked inventory record.
+		</p>
+	</Modal>
 
 	<!-- ── Harvest Table ────────────────────────────────────────────────────── -->
 	<div class="bg-white rounded-2xl border border-slate-200/50 shadow-sm overflow-hidden">
