@@ -23,7 +23,7 @@
 	let priceHistoryLoading = $state(false);
 	let priceTrendFilter = $state('all');
 	let priceChartCanvas = $state(null);
-	let priceChartInstance = $state(null);
+	let priceChartInstance = null;
 
 	// Sync datasets dynamically
 	$effect(() => {
