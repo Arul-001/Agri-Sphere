@@ -9,6 +9,21 @@
 		crops = data.crops || [];
 	});
 
+	// Bind page search parameter
+	import { page } from '$app/state';
+	let searchQuery = $derived(page.url.searchParams.get('search') || '');
+
+	// Filter crops list based on search query parameter
+	let filteredCrops = $derived.by(() => {
+		const q = searchQuery.trim().toLowerCase();
+		if (!q) return crops;
+		return crops.filter(c => 
+			(c.name || '').toLowerCase().includes(q) || 
+			(c.location || '').toLowerCase().includes(q) ||
+			(c.harvestDuration || '').toLowerCase().includes(q)
+		);
+	});
+
 	// Show/hide add crop dialog
 	let showAddModal = $state(false);
 
@@ -238,13 +253,15 @@
 				Monitor and manage your current season's yield.
 			</p>
 		</div>
-		<button
-			onclick={() => (showAddModal = true)}
-			class="bg-gradient-to-br from-primary-green to-dark-green text-white font-bold text-xs px-5 py-3 rounded-full flex items-center justify-center gap-1.5 shadow-md shadow-primary-green/20 hover:shadow-primary-green/45 hover:-translate-y-0.5 transition-all whitespace-nowrap"
-		>
-			<span class="material-symbols-outlined text-[18px]">add</span>
-			<span>Add Crop</span>
-		</button>
+		<div class="flex items-center gap-3">
+			<button
+				onclick={() => (showAddModal = true)}
+				class="bg-gradient-to-br from-primary-green to-dark-green text-white font-bold text-xs px-5 py-3 rounded-full flex items-center justify-center gap-1.5 shadow-md shadow-primary-green/20 hover:shadow-primary-green/45 hover:-translate-y-0.5 transition-all whitespace-nowrap cursor-pointer"
+			>
+				<span class="material-symbols-outlined text-[18px]">add</span>
+				<span>Add Crop</span>
+			</button>
+		</div>
 	</div>
 
 	<!-- Modal Backdrop & Window -->
@@ -502,7 +519,7 @@
 
 	<!-- Crop Cards Bento Grid -->
 	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-		{#each crops as crop (crop.id)}
+		{#each filteredCrops as crop (crop.id)}
 			<article
 				class="bg-white rounded-2xl border border-slate-200/50 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col group"
 			>

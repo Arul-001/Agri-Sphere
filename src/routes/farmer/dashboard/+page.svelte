@@ -1,5 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
+	import ExportReportButton from '$lib/components/ExportReportButton.svelte';
 
 	let { data } = $props();
 
