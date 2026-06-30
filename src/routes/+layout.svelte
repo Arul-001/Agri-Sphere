@@ -796,7 +796,7 @@
 								</a>
 							</div>
 							<!-- click outside backdrop -->
-							<button tabindex="-1" onclick={closeDropups} class="fixed inset-0 bg-transparent z-45 cursor-default w-screen h-screen pointer-events-auto border-none outline-none"></button>
+							<button aria-label="Close menu" tabindex="-1" onclick={closeDropups} class="fixed inset-0 bg-transparent z-45 cursor-default w-screen h-screen pointer-events-auto border-none outline-none"></button>
 						{/if}
 						<button
 							type="button"
@@ -834,7 +834,7 @@
 								</a>
 							</div>
 							<!-- click outside backdrop -->
-							<button tabindex="-1" onclick={closeDropups} class="fixed inset-0 bg-transparent z-45 cursor-default w-screen h-screen pointer-events-auto border-none outline-none"></button>
+							<button aria-label="Close menu" tabindex="-1" onclick={closeDropups} class="fixed inset-0 bg-transparent z-45 cursor-default w-screen h-screen pointer-events-auto border-none outline-none"></button>
 						{/if}
 						<button
 							type="button"
