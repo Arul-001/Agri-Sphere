@@ -162,10 +162,8 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	<!-- Material Icons Stylesheet -->
-	<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
-	<!-- Load Chart.js globally -->
-	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+	<!-- Chart.js — deferred to avoid render blocking -->
+	<script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
 </svelte:head>
 
 <!-- Global container -->
@@ -928,7 +926,7 @@
 			<header class="border-b border-emerald-100 bg-white/80 backdrop-blur-md sticky top-0 z-50">
 				<div class="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
 					<a href="/" class="flex items-center gap-3 group">
-						<img src="/logo.png" alt="AgriConnect Logo" class="size-10 object-contain rounded-full border border-emerald-100/50 shadow-sm transition-all duration-300 group-hover:scale-105" />
+						<img src="/logo.png" alt="AgriConnect Logo" class="size-10 object-contain rounded-full border border-emerald-100/50 shadow-sm transition-all duration-300 group-hover:scale-105" width="40" height="40" decoding="async" />
 						<span>
 							<span class="block text-lg font-bold tracking-tight text-slate-800">AgriConnect</span>
 							<span class="block text-xs text-dark-green font-medium -mt-0.5">Smart AgriTech Platform</span>

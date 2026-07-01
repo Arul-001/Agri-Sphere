@@ -15,6 +15,14 @@
 	let animationFrameId;
 	let startTime = Date.now();
 
+	// Cached uniform locations — set once at init, not every frame
+	let uTimeLocation;
+	let uColorLocation;
+	let uSpeedLocation;
+	let uScaleLocation;
+	let uRotationLocation;
+	let uNoiseIntensityLocation;
+
 	function hexToNormalizedRGB(hex) {
 		hex = hex.replace('#', '');
 		if (hex.length === 3) {
@@ -75,7 +83,7 @@
 							0.4 * sin(5.0 * (tex.x + tex.y +
 											 cos(3.0 * tex.x + 5.0 * tex.y) +
 											 0.02 * tOffset) +
-									 sin(20.0 * (tex.x + tex.y - 0.1 * tOffset)));
+									sin(20.0 * (tex.x + tex.y - 0.1 * tOffset)));
 
 			vec4 col = vec4(uColor, 1.0) * vec4(pattern) - rnd / 15.0 * uNoiseIntensity;
 			col.a = 1.0;
@@ -134,6 +142,14 @@
 		gl.enableVertexAttribArray(positionLocation);
 		gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
 
+		// Cache uniform locations once — avoids 6 GPU lookups per frame
+		uTimeLocation           = gl.getUniformLocation(program, 'uTime');
+		uColorLocation          = gl.getUniformLocation(program, 'uColor');
+		uSpeedLocation          = gl.getUniformLocation(program, 'uSpeed');
+		uScaleLocation          = gl.getUniformLocation(program, 'uScale');
+		uRotationLocation       = gl.getUniformLocation(program, 'uRotation');
+		uNoiseIntensityLocation = gl.getUniformLocation(program, 'uNoiseIntensity');
+
 		resizeCanvas();
 		window.addEventListener('resize', resizeCanvas);
 
@@ -158,19 +174,13 @@
 
 		const time = (Date.now() - startTime) / 1000.0;
 
-		const uTime = gl.getUniformLocation(program, 'uTime');
-		const uColor = gl.getUniformLocation(program, 'uColor');
-		const uSpeed = gl.getUniformLocation(program, 'uSpeed');
-		const uScale = gl.getUniformLocation(program, 'uScale');
-		const uRotation = gl.getUniformLocation(program, 'uRotation');
-		const uNoiseIntensity = gl.getUniformLocation(program, 'uNoiseIntensity');
-
-		gl.uniform1f(uTime, time);
-		gl.uniform3fv(uColor, hexToNormalizedRGB(color));
-		gl.uniform1f(uSpeed, speed);
-		gl.uniform1f(uScale, scale);
-		gl.uniform1f(uRotation, rotation);
-		gl.uniform1f(uNoiseIntensity, noiseIntensity);
+		// Use cached locations — zero GPU state lookups per frame
+		gl.uniform1f(uTimeLocation, time);
+		gl.uniform3fv(uColorLocation, hexToNormalizedRGB(color));
+		gl.uniform1f(uSpeedLocation, speed);
+		gl.uniform1f(uScaleLocation, scale);
+		gl.uniform1f(uRotationLocation, rotation);
+		gl.uniform1f(uNoiseIntensityLocation, noiseIntensity);
 
 		gl.clearColor(0, 0, 0, 0);
 		gl.clear(gl.COLOR_BUFFER_BIT);
