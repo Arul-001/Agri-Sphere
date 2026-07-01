@@ -753,6 +753,17 @@
 			</h1>
 			<p class="text-sm text-slate-500 mt-1">Monitor and schedule water distribution zones.</p>
 		</div>
+		<div class="flex items-center gap-3">
+			{#if scheduleRuns.length > 0}
+				<button 
+					onclick={clearAll}
+					class="border border-red-200 text-red-600 hover:bg-red-50/50 font-bold text-xs px-4 py-3 rounded-full flex items-center justify-center gap-1.5 transition-all whitespace-nowrap cursor-pointer"
+					title="Clear all events and weather overrides"
+				>
+					<span class="material-symbols-outlined text-[16px]">delete_sweep</span>
+					<span>Clear All</span>
+				</button>
+			{/if}
 		<div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
 			<!-- Location Monitor & Smart Rain Delay Header Widget -->
 			<div class="flex flex-wrap items-center gap-4 bg-white border border-slate-200/60 rounded-2xl p-2 px-3 shadow-xs">
