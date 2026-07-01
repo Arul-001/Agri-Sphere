@@ -64,9 +64,9 @@
 			<!-- Trust Badges -->
 			<div class="flex items-center gap-4 mt-6 pt-6 border-t border-slate-100 max-w-md">
 				<div class="flex -space-x-3">
-					<img class="w-10 h-10 rounded-full border-2 border-white object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWU6S8VQBpfFAyLuzLn6LA0NxAYwT5sNOpsNNNuLcTfLRv-Kao3q-38t_wPoLJ4dZyEW_C1WHzTfN3ZwEU8ZYPbAo7EjOw0huDGzY3ytrVQVUErhEH3bv7VmMFThhxsz_VR8gvHOegKHveY1tJKTBUsTSkQHIHk_FXG5688BTQeOdVfM97AA3otB9j4-oI0FnUK6bhaPXEx9V6YBIT0WmhYlD804clgVZyOOxv4sbQqlsIM570_61aIrWbISAu7RbtH0yAAvpcyl8" alt="Farmer User" />
-					<img class="w-10 h-10 rounded-full border-2 border-white object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMvA046KfbTHI6Nw-jox2YgPFc4SLkT3B6hqPMfZX6WW7Enk3jW8EyVx--OIVdkyUyp8BwIfd4lhHmwqBljWe26Cna-JBzdUcauD9NI-KnpNyGVDsGDIxEjfT9ykf-kz6cd5Dp65-ZueygF1vq3tPxNX_GtpkQqDnhdB8-BVC0CjfDpuXlU3Ud3mWnzwQlYHi1xMcf1-0-KPPkGq8cPtoUZ_Gor4iHe2zeXsmp2WcgHQw38mL1ezpodvxUnFvgXXMutqa-zVJLb2w" alt="Agronomist User" />
-					<img class="w-10 h-10 rounded-full border-2 border-white object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAhIyqJA7L0Zs7B-1tHoN-7FmLcgTw-IpFel_z9pwmDvgs_csRiq6hTFg6ftqwLCHhk3CG5RRUSx6KCfDmDIXErYvuV3GjVNyhk1pXvtKHz1Lf95tdZOZOD-_rKZVO4HSbzJYh88h8VM2mAiK1zQYI7buCWDJ1HANL8QGyiIi5hw6udr-2udWSbCFEu8eXtPa8a2yPZRbUUZvnddzm3lLHTV_WCtoQVOO1HhZSbh7q4bmiIZsJpSNhqqCghUJjn54gruJ0eK_OqejQ" alt="Greenhouse Tech" />
+					<img class="w-10 h-10 rounded-full border-2 border-white object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWU6S8VQBpfFAyLuzLn6LA0NxAYwT5sNOpsNNNuLcTfLRv-Kao3q-38t_wPoLJ4dZyEW_C1WHzTfN3ZwEU8ZYPbAo7EjOw0huDGzY3ytrVQVUErhEH3bv7VmMFThhxsz_VR8gvHOegKHveY1tJKTBUsTSkQHIHk_FXG5688BTQeOdVfM97AA3otB9j4-oI0FnUK6bhaPXEx9V6YBIT0WmhYlD804clgVZyOOxv4sbQqlsIM570_61aIrWbISAu7RbtH0yAAvpcyl8" alt="Farmer User" width="40" height="40" loading="lazy" decoding="async" />
+					<img class="w-10 h-10 rounded-full border-2 border-white object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMvA046KfbTHI6Nw-jox2YgPFc4SLkT3B6hqPMfZX6WW7Enk3jW8EyVx--OIVdkyUyp8BwIfd4lhHmwqBljWe26Cna-JBzdUcauD9NI-KnpNyGVDsGDIxEjfT9ykf-kz6cd5Dp65-ZueygF1vq3tPxNX_GtpkQqDnhdB8-BVC0CjfDpuXlU3Ud3mWnzwQlYHi1xMcf1-0-KPPkGq8cPtoUZ_Gor4iHe2zeXsmp2WcgHQw38mL1ezpodvxUnFvgXXMutqa-zVJLb2w" alt="Agronomist User" width="40" height="40" loading="lazy" decoding="async" />
+					<img class="w-10 h-10 rounded-full border-2 border-white object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAhIyqJA7L0Zs7B-1tHoN-7FmLcgTw-IpFel_z9pwmDvgs_csRiq6hTFg6ftqwLCHhk3CG5RRUSx6KCfDmDIXErYvuV3GjVNyhk1pXvtKHz1Lf95tdZOZOD-_rKZVO4HSbzJYh88h8VM2mAiK1zQYI7buCWDJ1HANL8QGyiIi5hw6udr-2udWSbCFEu8eXtPa8a2yPZRbUUZvnddzm3lLHTV_WCtoQVOO1HhZSbh7q4bmiIZsJpSNhqqCghUJjn54gruJ0eK_OqejQ" alt="Greenhouse Tech" width="40" height="40" loading="lazy" decoding="async" />
 				</div>
 				<div class="text-xs">
 					<div class="flex items-center text-amber-500">
@@ -230,7 +230,7 @@
 		<!-- Brand Column -->
 		<div class="space-y-4">
 			<div class="flex items-center gap-3">
-				<img src="/logo.png" alt="AgriConnect Logo" class="size-9 object-contain rounded-full border border-emerald-100/50 shadow-sm" />
+				<img src="/logo.png" alt="AgriConnect Logo" class="size-9 object-contain rounded-full border border-emerald-100/50 shadow-sm" width="36" height="36" loading="lazy" decoding="async" />
 				<span class="text-base font-extrabold text-slate-800 tracking-tight">AgriConnect</span>
 			</div>
 			<p class="text-xs text-slate-500 leading-relaxed">Smart Farming Meets Modern Technology. Grounded in Innovation.</p>
